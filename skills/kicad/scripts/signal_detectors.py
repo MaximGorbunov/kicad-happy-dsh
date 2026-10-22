@@ -4477,6 +4477,18 @@ def _is_module_internal_rail(net_name: str) -> bool:
     return any(base.startswith(pat) for pat in _MODULE_INTERNAL_RAIL_PATTERNS)
 
 
+# Gate-drive bootstrap pins: their supply is a capacitor to the switch node,
+# so having no DC path to a rail is the datasheet circuit, not a fault. Many
+# vendor symbols type them power_in. Same names detect_power_regulators uses.
+_BOOTSTRAP_PIN_TOKENS = frozenset({"BST", "BOOT", "BOOTSTRAP", "CBST"})
+
+
+def _is_bootstrap_pin_name(pin_name: str) -> bool:
+    """True for BST, BOOT, CBST, BOOT1, BST_A, ... (any _ or / token)."""
+    tokens = re.split(r"[_/]", (pin_name or "").upper())
+    return any(t.rstrip("0123456789") in _BOOTSTRAP_PIN_TOKENS for t in tokens)
+
+
 def audit_power_pin_dc_paths(ctx: AnalysisContext,
                              solder_jumpers: list[dict] | None = None
                              ) -> list[dict]:
@@ -4576,6 +4588,9 @@ def audit_power_pin_dc_paths(ctx: AnalysisContext,
             # at the ground reference — they don't need a path to a positive
             # power rail. Flagging them would be a false positive.
             if ctx.is_ground(net_name):
+                continue
+
+            if _is_bootstrap_pin_name(pin_name):
                 continue
 
             # If a connector is on this net, external DC supply is plausible.
