@@ -4328,23 +4328,32 @@ def audit_rail_sources(ctx: AnalysisContext,
             continue
 
         # No source at all — direct or through any jumper.
+        power_in_pins = [p.get("component", "") + "." + p.get("pin_number", "")
+                         for p in net_info.get("pins", [])
+                         if p.get("pin_type") == "power_in"]
+        if power_in_pins:
+            rs_confidence = "deterministic"
+            rs_load = "carries power_in pins"
+        else:
+            # Admitted by its name alone (is_power_net_name): no pin on it
+            # is power_in, so whether it needs a source is a guess.
+            rs_confidence = "heuristic"
+            rs_load = "is named like a power rail (no power_in pin on it)"
         findings.append({
             "detector": "audit_rail_sources",
             "rule_id": "RS-001",
             "severity": "warning",
-            "confidence": "deterministic",
+            "confidence": rs_confidence,
             "evidence_source": "topology",
             "category": "power",
             "summary": f"{net_name} has no declared source",
-            "description": (f"Net {net_name} carries power_in pins but has "
+            "description": (f"Net {net_name} {rs_load} but has "
                             "no power_out pin, no PWR_FLAG, no regulator "
                             "output mapping, and no bridged solder jumper "
                             "path to a sourced net."),
             "components": [],
             "nets": [net_name],
-            "pins": [p.get("component", "") + "." + p.get("pin_number", "")
-                     for p in net_info.get("pins", [])
-                     if p.get("pin_type") == "power_in"][:10],
+            "pins": power_in_pins[:10],
             "source_path": "none",
             "recommendation": (
                 "Add a PWR_FLAG to declare the rail as externally powered "
@@ -4357,7 +4366,7 @@ def audit_rail_sources(ctx: AnalysisContext,
                            "likely a wiring gap or missing PWR_FLAG."),
                 "standard_ref": "",
             },
-            "provenance": make_provenance("rs_rail_audit", "deterministic", []),
+            "provenance": make_provenance("rs_rail_audit", rs_confidence, []),
         })
 
     return findings
