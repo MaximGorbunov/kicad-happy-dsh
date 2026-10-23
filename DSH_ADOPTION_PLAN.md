@@ -134,21 +134,21 @@ Frontmatter (YAML) requirements:
 
 ## 3. Work plan
 
-### Phase 0 — fork + baseline (you)
+### Phase 0 — fork + baseline (you) ✅
 
 1. Fork the repo.
 2. Baseline check (5 min, in DSH): open the fork as a workspace, start a
    session, confirm all 11 skills appear in the catalog (they do today on
    upstream; re-verify post-refactor in Phase 5).
 
-### Phase 1 — DSH-native repo layout
+### Phase 1 — DSH-native repo layout ✅ (done; committed `a64728a`)
 
 **Add**
 
 - `.dsh/skills` → `../skills` (symlink). Pins discovery to DSH's verified
   top-priority project root (rank 100), independent of whatever preset the
   desktop currently uses. `skills/` stays the single source of truth.
-- `DSH.md` (project-level DSH onboarding doc, replaces `GEMINI.md`'s role):
+- `AGENTS.md` (project-level DSH onboarding doc, replaces `GEMINI.md`'s role):
   what the repo is, the 3 install modes, the end-to-end workflow, sandbox
   notes, Python-notes.
 
@@ -193,7 +193,7 @@ Frontmatter (YAML) requirements:
   regex, non-empty description, no legacy invocation keys, at most the
   known keys. Keep the CI job; it becomes the "DSH loadability" gate.
 
-### Phase 2 — DSH-native skill content
+### Phase 2 — DSH-native skill content ✅
 
 - **New hub skill `skills/hub/SKILL.md`** (name: `kicad-happy`):
   the orchestrator that ties the 10 skills together using DSH primitives:
@@ -231,7 +231,7 @@ Frontmatter (YAML) requirements:
   `example-report-*.md` — strip multi-agent framing, keep content.
 - `CHANGELOG.md` / `release-notes.md`: `3.0.0` entry — "DSH-native release".
 
-### Phase 3 — deep integration: MCP server (in first release)
+### Phase 3 — deep integration: MCP server (in first release) ✅
 
 Ship a stdio MCP server (single Python file, stdlib-only) that wraps the
 core analyzers and distributors as MCP tools: `analyze_schematic`,
@@ -261,11 +261,11 @@ MCP server implementation notes (keep the stdlib-only promise):
 - Each tool shells out to the existing `skills/*/scripts/*.py` — the MCP
   server is a thin adapter; all logic stays in the tested scripts.
 - Paths are always resolved inside the caller's workspace (sandbox-clean).
-- Document both wiring shapes in `DSH.md`: stdio row (above) and, where a
+- Document both wiring shapes in `AGENTS.md`: stdio row (above) and, where a
   long-lived server is preferred, `streamable-http` with `url`/`headers`
   (the shape your Home Assistant row already uses).
 
-### Phase 4 — GitHub Action
+### Phase 4 — GitHub Action ✅
 
 - Keep `action.yml` + `action/` as-is: it is deterministic Python (no LLM)
   and agent-agnostic; it keeps PR review working without any agent
@@ -320,7 +320,7 @@ kernel). Documented as a limitation, not a bug.
 | `.codex-plugin/` | Codex only |
 | `.cursor/` | Cursor only |
 | `.opencode/` | opencode only |
-| `GEMINI.md` | Gemini/Antigravity only (replaced by `DSH.md`) |
+| `GEMINI.md` | Gemini/Antigravity only (replaced by `AGENTS.md`, shipped) |
 | `plugin.json` (root) | Antigravity plugin schema |
 | `.agents/plugins/marketplace.json` | Cross-agent marketplace; no DSH consumer verified |
 | `install-guidance.md` (multi-agent sections) | Replaced by DSH-specific doc |
@@ -367,7 +367,7 @@ per-surface checklist (2-minute catalog check) rather than by assumption.
   verification before promising DSH-driven CI reviews (Phase 4 fallback:
   keep deterministic action).
 - **Sandbox prompts:** first network call per distributor API will trigger
-  the approval flow on first use; document in `DSH.md`.
+  the approval flow on first use; document in `AGENTS.md`.
 - **dsh-TUI third-party:** its profile/preset composition evolves upstream
   (it targets 0.2.1-rc.2 and keeps older hosts on compatibility paths). If a
   future TUI version switches presets, the Phase 5 TUI row catches it; the

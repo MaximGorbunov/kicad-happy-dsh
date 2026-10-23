@@ -2,6 +2,18 @@
 
 The story of each kicad-happy release — what changed and why it matters when upgrading. For line-level detail, see the [CHANGELOG](CHANGELOG.md).
 
+## 🧭 v3.0 — DeepSeek Harness edition
+
+This fork is the DSH edition of kicad-happy. The analyzer engine is untouched — every script, rule, and output is byte-identical to v2.3.2 — so this release is about *where the suite lives and how it is driven*: it now ships natively for DeepSeek Harness instead of as plugins for a dozen other agents.
+
+The headline change is discovery. The repo ships `.dsh/skills → skills`, DSH's highest-priority project skill root, so **cloning the repo is the install**: every profile that scans project roots (desktop, web, TUI, headless, ACP, SDK) picks up all 12 skills automatically, and DSH's watcher refreshes the catalog live as you edit. A new `AGENTS.md` is auto-loaded into every session in the workspace, so the agent knows the standard review workflow and the environment's quirks (Python 3.10+ minimum, DSH's bundled 3.12, workspace sandbox) without being told.
+
+The other agent surface — Claude Code plugins, Codex manifests, Cursor rules, opencode config, Antigravity `plugin.json`, the Gemini doc — is gone, replaced by DSH-specific install guidance (workspace / global symlinks / pinned profile config), a frontmatter conformance gate in CI that mirrors DSH's actual parser (it will now catch a skill DSH would silently ignore), and an `mcp/server.py` stdio server that exposes the analyzers and BOM tools as MCP tools for any workspace.
+
+Two new orchestration pieces round it out. A **hub skill** (`kicad-happy`) sits over the eleven domain skills and maps task shapes to skills and DSH primitives — parallel `subagent` calls for independent sheets or boards, `workflow` fan-out for big jobs, `present` for reports. And a two-tier GitHub workflow (`action/examples/dsh-headless.yml`) runs the free deterministic analysis on hosted runners and a `dsh headless` AI review on a self-hosted runner with DSH installed.
+
+Upgrading from the upstream v2 line: nothing breaks in the analysis — outputs are unchanged. The differences are all at the edges: skills load from the DSH catalog (not plugin marketplaces), the docs and examples are DSH-native, and the GitHub Action's AI tier is `dsh headless` on a self-hosted runner instead of a vendor API action.
+
 ## 🔧 v2.3.2 — Backport
 
 A small release from the field while the v3 refactor continues on its own branch. imrcly found that AM-001, the absolute-maximum check, had never fired on a real datasheet extraction: it looked up `VIN` where extractions store `VIN_max`. With the key convention honoured, an LM2596 on a 50 V rail against its 45 V limit is reported, as it should have been all along. The same PR makes every datasheets script read and write UTF-8, so Windows users on a cp1252 locale stop losing `°C` and `Ω` in unit strings.

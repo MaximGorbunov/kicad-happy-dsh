@@ -1,0 +1,103 @@
+# KiCad Design Review with AI review inside DeepSeek Harness (DSH)
+#
+# Two tiers:
+#   1. Deterministic analysis — runs on the normal GitHub-hosted runner
+#      (free, no API key, no DSH needed).
+#   2. AI review — runs `dsh headless` on a SELF-HOSTED runner with DeepSeek
+#      Harness installed. The agent boots against the checkout, loads the
+#      kicad-happy skill suite via the repo's .dsh/skills link, reads the
+#      deterministic analysis output, and posts a review comment.
+#
+# Setup:
+#   - Add this file to your KiCad project repo at:
+#       .github/workflows/kicad-review.yml
+#   - Self-hosted runner labels must match `runs-on` below, and DSH must be
+#     installed on that runner (desktop app bundle; the `dsh` CLI boots from
+#     it). The runner's DSH profile/credentials configure the model/provider.
+#
+# Verify `dsh headless` flags against your DSH version: `dsh --help`.
+
+name: KiCad Design Review (DSH)
+on:
+  push:
+    paths: ['**/*.kicad_sch', '**/*.kicad_pcb']
+  pull_request:
+    paths: ['**/*.kicad_sch', '**/*.kicad_pcb']
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+jobs:
+  deterministic:
+    runs-on: ubuntu-latest
+    outputs:
+      report-path: ${{ steps.analysis.outputs.report-path }}
+      sch-json: ${{ steps.analysis.outputs.schematic-json }}
+    steps:
+      - uses: actions/checkout@v6
+      - run: sudo apt-get install -y ngspice poppler-utils
+
+      - uses: MaximGorbunov/kicad-happy-dsh@v1
+        id: analysis
+        with:
+          # Optional: distributor API keys for datasheet download
+          # LCSC is always tried (no auth needed).
+          # digikey-client-id: ${{ secrets.DIGIKEY_CLIENT_ID }}
+          # digikey-client-secret: ${{ secrets.DIGIKEY_CLIENT_SECRET }}
+
+      - uses: thollander/actions-comment-pull-request@v3
+        if: always() && github.event_name == 'pull_request'
+        with:
+          file-path: ${{ steps.analysis.outputs.report-path }}
+          comment-tag: kicad-happy-review
+          mode: upsert
+
+      # Pass the analysis outputs to the AI-review job.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kicad-happy-analysis
+          path: |
+            ${{ steps.analysis.outputs.report-path }}
+            ${{ steps.analysis.outputs.schematic-json }}
+            ${{ steps.analysis.outputs.pcb-json }}
+          if-no-files-found: ignore
+
+  ai-review:
+    needs: deterministic
+    if: github.event_name == 'pull_request'
+    runs-on: [self-hosted, dsh]   # label of your DSH-equipped runner
+    steps:
+      - uses: actions/checkout@v6
+
+      # Pull the deterministic outputs from the first job.
+      - name: Download analysis artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: kicad-happy-analysis
+          path: analysis-out/
+
+      # One-shot DSH agent against the checkout. The .dsh/skills link in the
+      # repo gives it the full skill suite without any install step.
+      - name: DSH AI review
+        run: |
+          dsh headless "$(cat <<'PROMPT'
+          The kicad-happy deterministic analysis has already been run; the
+          artifacts under analysis-out/ are report.md (markdown report),
+          schematic.json, and pcb.json. Read them. Do NOT re-run the
+          analysis scripts. Review the
+          findings, verify the top 3-5 IC pinouts against datasheets where a
+          local cache exists, check WARNING findings for accuracy, and note
+          anything the analysis may have missed. Write a concise actionable
+          summary (under 2000 chars) to dsh-review.md.
+          PROMPT
+          )"
+
+      - uses: thollander/actions-comment-pull-request@v3
+        if: always()
+        with:
+          file-path: dsh-review.md
+          comment-tag: kicad-happy-dsh-review
+          mode: upsert

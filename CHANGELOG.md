@@ -6,6 +6,35 @@ This project follows [Semantic Versioning](https://semver.org/). Each release is
 
 ---
 
+## v3.0.0 — 2026-10-23
+
+**Theme: DeepSeek Harness edition.** This fork adopts DeepSeek Harness (DSH) as its sole agent target: every packaging, discovery, documentation, and orchestration layer is rebuilt for DSH. **All analyzer, detector, and script behaviour is unchanged** — analyzer output is byte-identical to v2.3.2; no schema, rule, or corpus-gate work was required.
+
+### Added
+
+- **Hub skill `kicad-happy`** (`skills/hub/`) — orchestrates the other eleven skills for full reviews and multi-board/multi-MPN work: skill map, standard review workflow, and the DSH multi-unit patterns (parallel `subagent`, `workflow` fan-out, `present`, `ask_user_question`, `schedule_create`). The catalog now carries 12 skills.
+- **`.dsh/skills → skills`** — DSH's rank-100 project skill root. Cloning the repo is the install; all 12 skills auto-discover in every profile that scans project roots (desktop, web, TUI, headless, ACP, SDK), and DSH's watcher updates the catalog live.
+- **`AGENTS.md`** — auto-loaded by DSH into every session's context: skill table, standard review workflow, environment notes (Python 3.10+ / DSH-bundled 3.12, sandbox), multi-unit patterns.
+- **`mcp/server.py`** — stdio MCP server (stdlib-only JSON-RPC) exposing `analyze_schematic`, `analyze_pcb`, `analyze_emc`, `analyze_thermal`, `cross_analysis`, `bom_analyze`, `bom_export`, `search_lcsc`, and `datasheet_status`. Wired into a DSH profile via the `@deepseek-ai/dsh-mcp-client` row (`transport: stdio`). See `mcp/README.md`.
+- **`DSH_ADOPTION_PLAN.md`** — the adoption plan this release executes.
+- **`action/examples/dsh-headless.yml`** — two-tier GitHub workflow: deterministic analysis on hosted runners + AI review via `dsh headless` on a self-hosted DSH-equipped runner.
+
+### Changed
+
+- `README.md`, `install-guidance.md`, `CONTRIBUTING.md`, `llms.txt`, `github-action.md` rewritten for DSH: discovery roots and ranks, install modes (workspace / global `~/.dsh/skills` / pinned `customSkillDirs`), the frontmatter contract, sandbox and Python troubleshooting, MCP wiring, and the `dsh headless` CI review (replacing the Claude/Codex/opencode action chains).
+- `check_skill_metadata.py` now mirrors DSH's `parseSkillFile` contract: kebab-case `name` grammar, required non-empty `description`, rejection of the legacy invocation keys (`modelInvocable`, `userInvocable`, `disableModelInvocation`), boolean checks on `disable-model-invocation` / `user-invocable`, warnings for unknown keys and long descriptions. The CI `skill-metadata` job is renamed accordingly.
+- `dispatch-claude-code.md` → **`dispatch-dsh.md`** — the datasheet-extraction dispatcher recipe now uses DSH's `subagent` tool (parallel dispatch in one message, `workflow` fan-out for large plans); `dispatcher-contract.md` and the pipeline scripts reference it.
+- Model-vendor de-branding throughout: `capability_mode.py` reports `platform: "deepseek-harness"`; docstrings and references no longer name other vendors.
+- `bom` and `kicad` skill descriptions trimmed under 900 chars (DSH renders descriptions verbatim in the session catalog; it has no hard cap).
+
+### Removed
+
+- Other-agent manifests: `.claude-plugin/`, `.codex-plugin/`, `.cursor/`, `.opencode/`, `.agents/` (skill symlinks), `GEMINI.md`, root `plugin.json` (Antigravity), and `action/examples/opencode-interactive.yml`.
+
+**Validation:** conformance checker green on all 12 skills; CI compile + metadata + smoke jobs cover this release (analyzer outputs unchanged, so no corpus gate was needed). DSH verified live against desktop 0.2.1-rc.2: catalog discovery, live watcher updates, and AGENTS.md auto-load all confirmed in-session.
+
+---
+
 ## v2.3.2 — 2026-10-22
 
 **Theme: backport — six small analyzer fixes from two contributors, landed on the 2.x line while the v3 refactor continues on its own branch. One change is not purely additive: RS-001 drops to `heuristic` confidence on rails it recognises only by name.**
