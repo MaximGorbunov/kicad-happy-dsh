@@ -115,18 +115,15 @@ Try: *"Analyze my KiCad project at `hardware/rev2/`"*.
 **Mode B — global install (every workspace):**
 
 ```bash
-REPO=<path-to-this-repo>
-mkdir -p ~/.dsh/skills
-for skill in kicad spice emc datasheets bom digikey mouser lcsc element14 jlcpcb pcbway; do
-  ln -sf "$REPO/skills/$skill" ~/.dsh/skills/$skill
-done
-ln -sf "$REPO/skills/hub" ~/.dsh/skills/kicad-happy
+cd <path-to-this-repo>
+./install.sh                 # macOS & Linux; idempotent
+# ./install.sh --uninstall   # remove the global links again
 ```
 
 `~/.dsh/skills/` is DSH's user-global skill root; the skills then load in
-every workspace, not just this repo's. (Symlink the *contents* of each skill
-directory — DSH reads each skill's `SKILL.md` frontmatter for its name, so
-link target names don't matter, but keep them tidy.)
+every workspace, not just this repo's. (The installer symlinks each skill
+directory; DSH reads each skill's `SKILL.md` frontmatter for its name, so
+the link targets are the skill directories themselves.)
 
 **Mode C — pinned profile config (advanced):**
 

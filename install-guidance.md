@@ -99,7 +99,15 @@ link). Verify by asking the agent to list its skills, or load one with the
 
 ### Mode B — global install (every workspace)
 
-macOS / Linux:
+macOS / Linux — use the shipped installer (idempotent; `--uninstall` reverses it,
+`--target DIR` installs into a custom root):
+
+```bash
+cd <path-to-this-repo>
+./install.sh
+```
+
+Manual equivalent (if you prefer to see each step):
 
 ```bash
 REPO=<path-to-this-repo>
@@ -116,7 +124,8 @@ Windows (PowerShell 7+, Developer Mode — or use junctions; see
 ```powershell
 $repo = (Get-Location).Path
 New-Item -ItemType Directory -Force "$HOME\.dsh\skills" | Out-Null
-"hub","kicad","spice","emc","datasheets","bom","digikey","mouser","lcsc","element14","jlcpcb","pcbway" | ForEach-Object {
+New-Item -ItemType SymbolicLink -Path "$HOME\.dsh\skills\kicad-happy" -Target "$repo\skills\hub" -Force | Out-Null
+"kicad","spice","emc","datasheets","bom","digikey","mouser","lcsc","element14","jlcpcb","pcbway" | ForEach-Object {
   New-Item -ItemType SymbolicLink -Path "$HOME\.dsh\skills\$_" -Target "$repo\skills\$_" -Force | Out-Null
 }
 ```
