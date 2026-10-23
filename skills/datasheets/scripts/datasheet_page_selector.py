@@ -18,6 +18,7 @@ Usage:
     print(selection.reasons)   # {1: "front page", 3: "pin description table", ...}
     print(selection.confidence)  # "toc_found" | "keyword_scored" | "fallback"
 """
+from __future__ import annotations
 
 import os
 import re

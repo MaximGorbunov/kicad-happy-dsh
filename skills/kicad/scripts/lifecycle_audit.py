@@ -22,6 +22,7 @@ Environment:
     ELEMENT14_API_KEY — element14/Newark API key
     (LCSC requires no credentials)
 """
+from __future__ import annotations
 
 import argparse
 import json

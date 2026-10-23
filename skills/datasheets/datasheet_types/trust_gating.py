@@ -40,7 +40,12 @@ No module-level state. Functions are pure. Thread-safe.
 """
 from __future__ import annotations
 
-from typing import Literal, Optional, TypeAlias
+from typing import Literal, Optional
+
+try:  # TypeAlias is Python 3.10+; only used in annotations (lazy under the
+    from typing import TypeAlias  # future import), so 3.9 can safely fall back.
+except ImportError:  # pragma: no cover - Python 3.9 fallback
+    TypeAlias = None  # type: ignore[assignment]
 
 from .spec_value import SpecValue
 

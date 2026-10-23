@@ -15,6 +15,7 @@ Usage:
 Requires both schematic and PCB JSON (schematic for power data, PCB for copper
 and thermal via data). Zero dependencies — Python 3.8+ stdlib only.
 """
+from __future__ import annotations
 
 import argparse
 import json

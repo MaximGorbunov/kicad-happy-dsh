@@ -13,6 +13,7 @@ Each check function returns a list of finding dicts with:
 
 Zero external dependencies beyond Python 3.8+ stdlib.
 """
+from __future__ import annotations
 
 import math
 import os

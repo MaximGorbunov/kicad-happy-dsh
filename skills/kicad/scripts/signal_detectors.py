@@ -4,6 +4,7 @@ Signal path detector functions extracted from analyze_signal_paths().
 Each detector takes an AnalysisContext (ctx) and returns its detection results.
 Some detectors also take prior results for cross-references.
 """
+from __future__ import annotations
 
 import math
 import re

@@ -42,6 +42,7 @@ and pins[].threshold_low_v (v1 schema, no change needed).
 All v2 fields are nullable. None means 'datasheet didn't specify or
 extraction couldn't verify', distinct from explicit False.
 """
+from __future__ import annotations
 
 import hashlib
 import json

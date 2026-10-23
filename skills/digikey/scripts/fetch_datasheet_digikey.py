@@ -24,6 +24,7 @@ Exit codes:
     1 = download failed after all attempts
     2 = search failed (API error or part not found)
 """
+from __future__ import annotations
 
 import argparse
 import json

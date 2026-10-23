@@ -17,6 +17,7 @@ Parses Gerber RS-274X files and Excellon drill files to extract:
 Usage:
     python analyze_gerbers.py <gerber_directory> [--output file.json] [--compact] [--full]
 """
+from __future__ import annotations
 
 import json
 import os

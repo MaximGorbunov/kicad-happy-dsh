@@ -10,6 +10,7 @@ All network calls are optional — if no API credentials are available or the
 part isn't found, returns None and the cascade falls through to the lookup
 table.
 """
+from __future__ import annotations
 
 import json
 import os

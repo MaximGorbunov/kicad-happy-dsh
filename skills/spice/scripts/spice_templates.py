@@ -13,6 +13,7 @@ Supported detector types (Phase 1):
   - Opamp circuits (AC analysis → gain, bandwidth)
   - Crystal circuits (AC analysis → negative resistance margin)
 """
+from __future__ import annotations
 
 import math
 import re

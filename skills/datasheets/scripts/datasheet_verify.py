@@ -7,6 +7,7 @@ external components, and decoupling inadequacy.
 Requires datasheets/extracted/ cache populated by the LLM extraction
 pipeline (via sync_datasheets_digikey + agent extraction).
 """
+from __future__ import annotations
 
 import json
 import os

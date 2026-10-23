@@ -22,6 +22,7 @@ Dependencies:
     - Falls back to urllib if requests is not installed
     - playwright (optional) — for JS-rendered datasheet pages
 """
+from __future__ import annotations
 
 import argparse
 import json
