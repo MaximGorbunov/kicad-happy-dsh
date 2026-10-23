@@ -84,6 +84,27 @@ jobs:
       - name: datasheet_verify v1.4 cache round-trip smoke
         run: python3 skills/datasheets/scripts/_smoke_v14_roundtrip.py
 
+      - name: "kicad-generate: author example project"
+        # Generate the reference project into a temp dir. Fails the build if
+        # kicad_author.py errors out.
+        run: |
+          python3 skills/kicad-generate/scripts/kicad_author.py \
+            skills/kicad-generate/examples/bed_pump_receiver/design.json \
+            --out /tmp/gen-example --no-validate
+
+      - name: "kicad-generate: validate generated project (regression gate)"
+        # Deterministic invariant checks only (--no-cli: no KiCad on the
+        # runner). Catches the question-marks bug class: placed lib_id without
+        # a matching lib_symbols cache entry, unbalanced files, wrong roots,
+        # duplicate references. This is the guard that keeps generated
+        # schematics openable.
+        run: |
+          python3 skills/kicad-generate/scripts/validate_kicad.py \
+            /tmp/gen-example --no-cli --strict
+
+      - name: validate_kicad.py --help
+        run: python3 skills/kicad-generate/scripts/validate_kicad.py --help > /dev/null
+
   harness-smoke:
     runs-on: ubuntu-latest
 

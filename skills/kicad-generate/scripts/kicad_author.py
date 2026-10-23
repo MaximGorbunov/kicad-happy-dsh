@@ -18,6 +18,7 @@ Spec (JSON) — see references/file-format-reference.md and examples/bed_pump_re
 Usage:
   python3 kicad_author.py design.json --out DIR
 """
+from __future__ import annotations
 import argparse, json, os, re, sys, uuid as _uuid
 
 def uid():
@@ -162,6 +163,40 @@ def emit_symbol(sym):
     ]
     return "\n".join(out)
 
+def synthesize_placeholder(lib_id, comp, pin_tip):
+    """Build a minimal symbol block for a lib_id with no resolvable library.
+
+    Guarantees the placed symbol resolves in the schematic editor (a clean
+    labeled box with pins) instead of the default question-mark placeholder.
+    Used when a spec references a lib_id absent from both custom_symbols and
+    the standard libraries (e.g. MountingHole — a footprint-only part).
+    """
+    name = lib_id.split(":", 1)[1] if ":" in lib_id else lib_id
+    tip = pin_tip.get(lib_id, {})
+    pin_nums = sorted(comp.get("pins", {}).keys(), key=lambda x: int(x) if str(x).isdigit() else str(x))
+    # Place pins on the box edges from their schematic tip offsets so wire
+    # endpoints still land on the symbol. Fall back to a left/right split.
+    pins = []
+    for i, num in enumerate(pin_nums):
+        dx, dy = tip.get(num, ([-6.35, 3.81 - i * 2.54] if i % 2 == 0 else [6.35, 3.81 - i * 2.54]))
+        ang = 0 if dx < 0 else 180
+        pins.append({"type": "passive", "num": num, "name": "",
+                     "at": [dx, dy, ang], "length": 2.54})
+    # Size the body to enclose the pins (min box, symmetric).
+    if pins:
+        xs = [abs(p["at"][0]) for p in pins]; ys = [abs(p["at"][1]) for p in pins]
+        bx = max(xs) + 1.27; by = max(ys) + 1.27
+    else:
+        bx, by = 3.81, 2.54
+    bodybox = (-bx, -by, bx, by)
+    # emit_body/emit_pins_unit name sub-symbols by bare name; re-key header after.
+    sym = {"name": name, "ref": comp.get("ref", "U")[:1] or "U",
+           "value": comp.get("value", name), "footprint": comp.get("footprint", ""),
+           "bodybox": bodybox, "pins": pins}
+    block = emit_symbol(sym)
+    return rekey_symbol_block(block, lib_id)
+
+
 def build_kicad_sym(custom_symbols, outdir, proj):
     if not custom_symbols:
         return None
@@ -228,15 +263,189 @@ def load_standard_symbol(lib_id, syms_dir):
     b = extract_block(t, r'\(symbol "' + re.escape(name) + r'"')
     return b
 
+def derive_symbol_pins(lib_id, syms_dir, _depth=0):
+    """Read a symbol's real pin positions from its library, following (extends).
+
+    Returns {pin_number: (x, y)} in symbol-local coordinates, or {} if the
+    symbol/library can't be found. This is the authoritative source for where a
+    pin's connection point is; the spec's hand-maintained pin_tip table drifts
+    and silently breaks routing (wires land off-pin, board is electrically
+    dead). Walks the (extends "BASE") chain so derived parts (1N5819, IRLZ44N,
+    AMS1117-3.3) resolve their inherited pins.
+    """
+    if _depth > 4 or ":" not in lib_id:
+        return {}
+    lib, name = lib_id.split(":", 1)
+    p = os.path.join(syms_dir, lib + ".kicad_sym")
+    if not os.path.isfile(p):
+        return {}
+    try:
+        t = open(p).read()
+    except OSError:
+        return {}
+    b = extract_block(t, r'\(symbol "' + re.escape(name) + r'"')
+    if not b:
+        return {}
+    m = re.search(r'\(extends "([^"]+)"', b)
+    if m:
+        return derive_symbol_pins(lib + ":" + m.group(1), syms_dir, _depth + 1)
+    pins = {}
+    for pm in re.finditer(
+            r'\(pin \w+ \w+\s*\(at (-?[\d.]+) (-?[\d.]+) (-?[\d.]+)\)'
+            r'.*?\(number "([^"]+)"', b, re.S):
+        # KiCad symbol libraries are Y-up but schematics are Y-down: placing a
+        # symbol flips Y. Negate the library Y so the schematic pin offset is
+        # correct — without this every derived pin lands on the wrong side and
+        # labels/wires attach to the wrong pin (silent net shorts).
+        pins[pm.group(4)] = (float(pm.group(1)), -float(pm.group(2)))
+    return pins
+
+def derive_symbol_pin_types(lib_id, syms_dir, _depth=0):
+    """Read a symbol's pin electrical types {pin_number: type} from its library.
+
+    Types are what ERC uses to decide if a power net is driven. Follows the
+    (extends) chain like derive_symbol_pins. Returns {} when unknown.
+    """
+    if _depth > 4 or ":" not in lib_id:
+        return {}
+    lib, name = lib_id.split(":", 1)
+    p = os.path.join(syms_dir, lib + ".kicad_sym")
+    if not os.path.isfile(p):
+        return {}
+    try:
+        t = open(p).read()
+    except OSError:
+        return {}
+    b = extract_block(t, r'\(symbol "' + re.escape(name) + r'"')
+    if not b:
+        return {}
+    m = re.search(r'\(extends "([^"]+)"', b)
+    if m:
+        return derive_symbol_pin_types(lib + ":" + m.group(1), syms_dir, _depth + 1)
+    types = {}
+    for pm in re.finditer(
+            r'\(pin (\w+) \w+\s*\(at (-?[\d.]+) (-?[\d.]+) (-?[\d.]+)\)'
+            r'.*?\(number "([^"]+)"', b, re.S):
+        types[pm.group(5)] = pm.group(1)
+    return types
+
+
+def authoritative_pin_tips(comps, syms_dir, spec_tips):
+    """Merge real (library-derived) pin positions over the spec's pin_tip table.
+
+    Library-derived positions win where available (they are ground truth); the
+    spec table is kept only as a fallback for custom/placeholder symbols with no
+    standard library. Result maps lib_id -> {pin: [dx, dy]} in the shape the
+    router expects.
+
+    Both paths yield SCHEMATIC-space offsets (Y already negated). The spec's
+    pin_tip stores raw symbol-local Y, so the fallback negates it here to match
+    KiCad's Y-flip-at-placement — otherwise custom-symbol labels land on the
+    wrong side of the part and short nets.
+    """
+    tips = {}
+    for lid, d in (spec_tips or {}).items():
+        tips[lid] = {str(k): [float(v[0]), -float(v[1])] for k, v in d.items()}
+    if not syms_dir:
+        return tips
+    for lid in sorted({c["lib_id"] for c in comps}):
+        real = derive_symbol_pins(lid, syms_dir)
+        if real:
+            tips[lid] = {str(k): [v[0], v[1]] for k, v in real.items()}
+    return tips
+
+def rekey_symbol_block(block, lib_id):
+    """Re-key an embedded symbol block's TOP-LEVEL name to the full lib_id.
+
+    KiCad keys the schematic's embedded lib_symbols cache by the fully
+    library-qualified lib_id (e.g. "Device:R"), and a placed symbol's
+    (lib_id "Device:R") resolves against that key. Standard-library and custom
+    blocks carry the bare name ("R"), so embedding them verbatim leaves every
+    placed part unresolved — rendered in the GUI as a box with a question mark.
+
+    Only the header (top-level) name is rewritten; inner unit sub-symbols
+    ("R_0_1", "R_1_1") keep their bare prefix, matching KiCad's own files.
+    """
+    if not block:
+        return block
+    m = re.search(r'\(symbol "([^"]*)"', block)
+    if not m:
+        return block
+    # Replace only the first (header) occurrence.
+    return block[:m.start()] + '(symbol "%s"' % lib_id + block[m.end():]
+
+def inline_extends(derived_block, base_block, lib_id):
+    """Flatten an (extends "...") symbol by inlining the base's unit sub-symbols.
+
+    A derived symbol carries no pins of its own — it inherits them from its base
+    via (extends "BASE"). KiCad's resolution of that reference inside a
+    schematic's embedded lib_symbols cache is unreliable (the base must be
+    present under an exact key), and a symbol whose extends doesn't resolve has
+    NO pins, so nothing connecting to it becomes an open. Inlining the base's
+    unit sub-symbols and dropping (extends) makes the block self-contained and
+    immune to that. Sub-symbol names are re-prefixed to the derived name so the
+    units bind to the right parent.
+    """
+    if not derived_block or "(extends" not in derived_block:
+        return derived_block, False
+    if not base_block:
+        return derived_block, False
+    derived_name = lib_id.split(":", 1)[1]
+    base_name_m = re.search(r'\(extends "([^"]+)"', derived_block)
+    base_name = base_name_m.group(1)
+    # Collect the base's unit sub-symbols: (symbol "BASE_0_1" ...) etc.
+    unit_blocks = []
+    for m in re.finditer(r'\n(\t+)\(symbol "' + re.escape(base_name) + r'_(\d+_\d+)"', base_block):
+        start = m.start() + 1
+        # walk to the matching close paren of this sub-symbol
+        depth = 0; j = start; in_str = False; esc = False
+        while j < len(base_block):
+            c = base_block[j]
+            if esc: esc = False
+            elif in_str:
+                if c == "\\": esc = True
+                elif c == '"': in_str = False
+            elif c == '"': in_str = True
+            elif c == "(": depth += 1
+            elif c == ")":
+                depth -= 1
+                if depth == 0: break
+            j += 1
+        unit = base_block[start:j + 1]
+        # re-prefix the sub-symbol name to the derived symbol
+        unit = unit.replace('"%s_%s"' % (base_name, m.group(2)),
+                            '"%s_%s"' % (derived_name, m.group(2)), 1)
+        unit_blocks.append(unit)
+    if not unit_blocks:
+        return derived_block, False
+    # Remove the (extends "...") line from the derived block.
+    out = re.sub(r'\n\t\t\(extends "[^"]+"\)', "", derived_block, count=1)
+    # Insert the inlined units just before the final (embedded_fonts no) \t)
+    marker = "\t\t(embedded_fonts no)"
+    if marker in out:
+        insert_at = out.rindex(marker)
+        out = out[:insert_at] + "\n".join(unit_blocks) + "\n" + out[insert_at:]
+    else:
+        # fall back: insert before the last closing paren of the block
+        close = out.rfind("\n\t)")
+        out = out[:close] + "\n" + "\n".join(unit_blocks) + out[close:]
+    return out, True
+
+
 def build_kicad_sch(spec, outdir, proj):
     syms_dir = spec.get("kicad_syms_dir")
-    pin_tip = spec.get("pin_tip", {})
+    # Real library pin positions override the spec's hand-maintained pin_tip
+    # table (which drifts and silently breaks routing — wires land off-pin).
+    pin_tip = authoritative_pin_tips(spec.get("comps", []), syms_dir,
+                                     spec.get("pin_tip", {}))
     n_pins = spec.get("n_pins", {})
     comps = spec["comps"]
     custom_names = {s["name"] for s in spec.get("custom_symbols", [])}
 
     # collect lib_symbols to embed (system + custom)
     lib_blocks, seen = [], set()
+    embedded_ids = set()
+    placeholder_ids = set()
     for c in comps:
         lib_id = c["lib_id"]
         if ":" in lib_id and lib_id.split(":")[0] == proj:
@@ -250,24 +459,32 @@ def build_kicad_sch(spec, outdir, proj):
         else:
             b = load_standard_symbol(lib_id, syms_dir)
         if b is None:
-            continue
-        key = re.sub(r'\s+', '', b)
-        if key in seen:
-            continue
-        seen.add(key)
-        lib_blocks.append(b)
-        # handle (extends ...) base symbols
+            # No resolvable definition (missing lib, or a footprint-only part
+            # like MountingHole). Synthesize a placeholder so the placed symbol
+            # still resolves in the editor instead of a question-mark box.
+            b = synthesize_placeholder(lib_id, c, pin_tip)
+            if b is not None:
+                placeholder_ids.add(lib_id)
+        # KiCad keys the embedded cache by the full lib_id; re-key bare-name
+        # blocks so placed (lib_id "...") symbols resolve in the schematic GUI.
+        # Derived (extends) symbols get their base's units inlined first so they
+        # are self-contained — an unresolved extends leaves the symbol with no
+        # pins and every connection to it an open.
         mb = re.search(r'\(extends "([^"]+)"', b)
-        if mb:
-            base = None
-            lib, nm = lib_id.split(":")
+        if mb and syms_dir:
+            lib = lib_id.split(":", 1)[0]
             bp = os.path.join(syms_dir, lib + ".kicad_sym")
+            base = None
             if os.path.isfile(bp):
-                base = extract_block(open(bp).read(), r'\(symbol "' + re.escape(mb.group(1)) + r'"')
-            if base:
-                keyb = re.sub(r'\s+', '', base)
-                if keyb not in seen:
-                    seen.add(keyb); lib_blocks.append(base)
+                base = extract_block(open(bp).read(),
+                                     r'\(symbol "' + re.escape(mb.group(1)) + r'"')
+            b, _inlined = inline_extends(b, base, lib_id)
+        b = rekey_symbol_block(b, lib_id)
+        key = re.sub(r'\s+', '', b)
+        if key not in seen:
+            seen.add(key)
+            lib_blocks.append(b)
+        embedded_ids.add(lib_id)
 
     # net graph from pin tips
     nets = {}
@@ -281,37 +498,49 @@ def build_kicad_sch(spec, outdir, proj):
             dx, dy = tip[pin]
             net(nname).append((c["x"] + dx, c["y"] + dy))
 
-    def route_net(pts):
-        if len(pts) <= 1:
-            return [], []
-        xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
-        mx = min(xs); my = sorted(ys)[len(ys) // 2]
-        junctions = set(); segs = []
-        for (px, py) in pts:
-            if abs(px - mx) < 1e-6 and abs(py - my) < 1e-6:
-                junctions.add((round(mx, 3), round(my, 3))); continue
-            if abs(px - mx) < 1e-6:
-                if py != my:
-                    segs.append(((px, py), (mx, my)))
-                    junctions.add((round(mx, 3), round(my, 3)))
-            else:
-                segs.append(((px, py), (px, my)))
-                segs.append(((px, my), (mx, my)))
-                junctions.add((round(px, 3), round(my, 3)))
-                junctions.add((round(mx, 3), round(my, 3)))
-        merged = []
-        for a, b in segs:
-            if merged and (a[0] == merged[-1][1][0] and a[1] == merged[-1][1][1]):
-                pa, pb = merged[-1]
-                if (pa[0] == pb[0] and a[0] == b[0]) or (pa[1] == pb[1] and a[1] == b[1]):
-                    merged[-1] = (pa, b); continue
-            merged.append((a, b))
-        return merged, sorted(junctions)
-
+    # Wire routing was removed in favor of label-based connectivity (see the
+    # label emission below): the old router drew collinear segments that shorted
+    # nets sharing a bus row. Labels join same-named pins with no short risk.
     all_segs, all_junc = [], []
-    for nname, npts in nets.items():
-        s, j = route_net(npts)
-        all_segs.extend(s); all_junc.extend(j)
+
+    # Detect undriven power nets so we can attach a PWR_FLAG to each. KiCad ERC
+    # reports "Input Power pin not driven by any Output Power pins" for any net
+    # that has power_in pins but no power_out pin driving it. A PWR_FLAG is a
+    # 1-pin power_out symbol; placing one on the net satisfies ERC. This is the
+    # standard KiCad idiom for externally-powered nets (a connector/regulator
+    # input feeds them, not an on-sheet power output).
+    undriven_power_nets = []
+    if syms_dir:
+        pin_types_cache = {}
+        for c in comps:
+            lid = c["lib_id"]
+            if lid not in pin_types_cache:
+                pin_types_cache[lid] = derive_symbol_pin_types(lid, syms_dir)
+        net_has_power_in = set()
+        net_has_power_out = set()
+        for c in comps:
+            ptypes = pin_types_cache.get(c["lib_id"], {})
+            for pin, nname in c["pins"].items():
+                if nname is None:
+                    continue
+                ptype = ptypes.get(str(pin))
+                if ptype == "power_in":
+                    net_has_power_in.add(nname)
+                elif ptype == "power_out":
+                    net_has_power_out.add(nname)
+        undriven_power_nets = sorted(net_has_power_in - net_has_power_out)
+
+    # Embed the PWR_FLAG definition (and its power:GND-style base) when we will
+    # place at least one. PWR_FLAG is a single power_out pin; it satisfies ERC's
+    # "power pin not driven" for externally-powered nets.
+    if undriven_power_nets:
+        pwr = load_standard_symbol("power:PWR_FLAG", syms_dir)
+        if pwr:
+            pwr = rekey_symbol_block(pwr, "power:PWR_FLAG")
+            keyp = re.sub(r'\s+', '', pwr)
+            if keyp not in seen:
+                seen.add(keyp)
+                lib_blocks.append(pwr)
 
     sheet_uuid = uid()
     title = spec.get("title", proj)
@@ -331,12 +560,22 @@ def build_kicad_sch(spec, outdir, proj):
     for b in lib_blocks:
         L.append("\t" + b)
     L.append("\t)")
-    for (jx, jy) in set(all_junc):
-        L.append("\t(junction")
-        L.append("\t\t(at %s %s)" % (fmt(jx), fmt(jy)))
-        L.append("\t\t(diameter 0)")
-        L.append('\t\t(uuid "%s")' % uid())
-        L.append("\t)")
+
+    # Every placed symbol now resolves (real or synthesized). Report any that
+    # fell back to a placeholder so the user knows those parts have no real
+    # library symbol behind them (they render as a labeled box, not a
+    # question mark, but pin geometry is approximate).
+    if placeholder_ids:
+        print("NOTE: %d symbol(s) had no library definition and use a "
+              "synthesized placeholder (renders as a labeled box; pin geometry "
+              "is approximate — add a real symbol for correctness):"
+              % len(placeholder_ids), file=sys.stderr)
+        for u in sorted(placeholder_ids):
+            lib = u.split(":")[0] if ":" in u else u
+            sp = os.path.join(syms_dir, lib + ".kicad_sym") if syms_dir else None
+            why = ("library file not found: %s" % sp) if sp and not os.path.isfile(sp) \
+                  else "symbol not in library (add it to custom_symbols, or fix the lib_id)"
+            print("  - %s  (%s)" % (u, why), file=sys.stderr)
     for c in comps:
         tip = pin_tip.get(c["lib_id"], {})
         for pin, nname in c["pins"].items():
@@ -347,30 +586,41 @@ def build_kicad_sch(spec, outdir, proj):
             L.append("\t\t(at %s %s)" % (fmt(c["x"] + dx), fmt(c["y"] + dy)))
             L.append('\t\t(uuid "%s")' % uid())
             L.append("\t)")
-    for (a, b) in all_segs:
-        L.append("\t(wire")
-        L.append("\t\t(pts")
-        L.append("\t\t\t(xy %s %s) (xy %s %s)" % (fmt(a[0]), fmt(a[1]), fmt(b[0]), fmt(b[1])))
-        L.append("\t\t)")
-        L.append("\t\t(stroke")
-        L.append("\t\t\t(width 0)")
-        L.append("\t\t\t(type default)")
-        L.append("\t\t)")
-        L.append('\t\t(uuid "%s")' % uid())
-        L.append("\t)")
-    for nname, npts in nets.items():
-        # Place the label exactly on an actual pin tip so it electrically
-        # connects to that pin (an offset label would dangle / be unconnected).
-        lx, ly = npts[0]
+    # Connectivity is by LABEL, not by wire. Placing a label at every named pin
+    # makes KiCad join same-named pins into the intended net with zero risk of
+    # the collinear-overlap shorts that wire routing produced (nets sharing a
+    # bus row / vertical stub column shorted together). This yields a netlist
+    # that matches spec intent by construction. The user routes in the GUI.
+    # Compute PWR_FLAG positions up front. KiCad's parser is order-sensitive:
+    # every (label ...) must precede every placed (symbol ...). So we emit the
+    # flag labels in the label block below and the flag symbols in the symbol
+    # block, keeping labels-before-symbols ordering intact.
+    pwr_flag_spots = [(10.16 + i * 10.16, 10.16, nn)
+                      for i, nn in enumerate(undriven_power_nets)]
+
+    for nname, npts in sorted(nets.items()):
+        for (lx, ly) in npts:
+            L.append('\t(label "%s"' % nname)
+            L.append("\t\t(at %s %s 0)" % (fmt(lx), fmt(ly)))
+            L.append("\t\t(effects")
+            L.append("\t\t\t(font")
+            L.append("\t\t\t\t(size 1.27 1.27)")
+            L.append("\t\t\t)")
+            L.append("\t\t)")
+            # NOTE: no (global yes) — KiCad 10 plain labels are global; the field
+            # is rejected by the parser at this position.
+            L.append('\t\t(uuid "%s")' % uid())
+            L.append("\t)")
+    # A label on each PWR_FLAG's pin (the flag symbol itself is emitted with the
+    # other placed symbols below — labels must all come first).
+    for (fx, fy, nname) in pwr_flag_spots:
         L.append('\t(label "%s"' % nname)
-        L.append("\t\t(at %s %s 0)" % (fmt(lx), fmt(ly)))
+        L.append("\t\t(at %s %s 0)" % (fmt(fx), fmt(fy)))
         L.append("\t\t(effects")
         L.append("\t\t\t(font")
         L.append("\t\t\t\t(size 1.27 1.27)")
         L.append("\t\t\t)")
         L.append("\t\t)")
-        # NOTE: no (global yes) — KiCad 10 plain labels are global; the field
-        # is rejected by the parser at this position.
         L.append('\t\t(uuid "%s")' % uid())
         L.append("\t)")
     for c in comps:
@@ -423,6 +673,48 @@ def build_kicad_sch(spec, outdir, proj):
         L.append("\t\t\t)")
         L.append("\t\t)")
         L.append("\t)")
+    # Emit the PWR_FLAG symbols (their labels were emitted above, before all
+    # symbols, to satisfy KiCad's order-sensitive parser). Each flag drives one
+    # previously-undriven power net, clearing ERC "power pin not driven".
+    for idx, (fx, fy, _nname) in enumerate(pwr_flag_spots):
+        L.append("\t(symbol")
+        L.append('\t\t(lib_id "power:PWR_FLAG")')
+        L.append("\t\t(at %s %s 0)" % (fmt(fx), fmt(fy)))
+        L.append("\t\t(unit 1)")
+        L.append("\t\t(exclude_from_sim no)")
+        L.append("\t\t(in_bom yes)")
+        L.append("\t\t(on_board yes)")
+        L.append("\t\t(dnp no)")
+        L.append('\t\t(uuid "%s")' % uid())
+        L.append('\t\t(property "Reference" "#FLG%02d"' % (idx + 1))
+        L.append("\t\t\t(at %s %s 0)" % (fmt(fx), fmt(fy - 3.81)))
+        L.append("\t\t\t(effects")
+        L.append("\t\t\t\t(font")
+        L.append("\t\t\t\t\t(size 1.27 1.27)")
+        L.append("\t\t\t\t)")
+        L.append("\t\t\t\t(hide yes)")
+        L.append("\t\t\t)")
+        L.append("\t\t)")
+        L.append('\t\t(property "Value" "PWR_FLAG"')
+        L.append("\t\t\t(at %s %s 0)" % (fmt(fx), fmt(fy + 3.81)))
+        L.append("\t\t\t(effects")
+        L.append("\t\t\t\t(font")
+        L.append("\t\t\t\t\t(size 1.27 1.27)")
+        L.append("\t\t\t\t)")
+        L.append("\t\t\t)")
+        L.append("\t\t)")
+        L.append('\t\t(pin "1"')
+        L.append('\t\t\t(uuid "%s")' % uid())
+        L.append("\t\t)")
+        L.append("\t\t(instances")
+        L.append('\t\t\t(project ""')
+        L.append('\t\t\t\t(path "/%s"' % sheet_uuid)
+        L.append('\t\t\t\t\t(reference "#FLG%02d")' % (idx + 1))
+        L.append("\t\t\t\t\t(unit 1)")
+        L.append("\t\t\t\t)")
+        L.append("\t\t\t)")
+        L.append("\t\t)")
+        L.append("\t)")
     L.append("\t(sheet_instances")
     L.append('\t\t(path "/"')
     L.append('\t\t\t(page "1")')
@@ -432,7 +724,10 @@ def build_kicad_sch(spec, outdir, proj):
     L.append(")")
     path = os.path.join(outdir, proj + ".kicad_sch")
     open(path, "w").write("\n".join(L) + "\n")
-    return path, len(all_segs), len(set(all_junc)), len(nets)
+    # Report pin-label count in the "wires" slot so the summary stays honest
+    # (connectivity is by label now, not routed wires).
+    n_labels = sum(len(pts) for pts in nets.values())
+    return path, n_labels, 0, len(nets)
 
 # ---------------------------------------------------------------------------
 # PCB  (.kicad_pcb)
@@ -798,6 +1093,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("spec", help="path to design.json")
     ap.add_argument("--out", required=True, help="output directory")
+    ap.add_argument("--no-validate", action="store_true",
+                    help="skip the post-generation validation gate")
+    ap.add_argument("--strict", action="store_true",
+                    help="fail generation if validation finds errors "
+                         "(default: warn and continue)")
     a = ap.parse_args()
     spec = json.load(open(a.spec))
     proj = spec["project"]
@@ -813,8 +1113,37 @@ def main():
     _, sw, sj, sn = sch
     _, pf, pt, pn = pcb
     print("wrote %s project:" % proj)
-    print("  schematic: %s symbols, %s wires, %s junctions, %s nets" % (len(spec["comps"]), sw, sj, sn))
+    print("  schematic: %s symbols, %s pin labels, %s nets" % (len(spec["comps"]), sw, sn))
     print("  pcb: %s footprints, %s traces, %s nets" % (pf, pt, pn))
+
+    # ---- validation gate -------------------------------------------------
+    # Syntactically-valid output can still be semantically broken (e.g. the
+    # question-marks bug). Always validate what we just wrote; --strict turns
+    # errors into a non-zero exit for CI.
+    if not a.no_validate:
+        try:
+            from validate_kicad import validate
+            # Pass the spec so the netlist-connectivity check (opens + shorts
+            # vs intent) runs too — the invariant that catches electrically-wrong
+            # but syntactically-valid output.
+            rep, _ = validate(a.out, use_cli=True, strict=a.strict, spec=a.spec)
+            n_err = len(rep.errors)
+            for c, m in rep.errors:
+                print("  VALIDATION ERROR   [%s] %s" % (c, m), file=sys.stderr)
+            for c, m in rep.warnings:
+                print("  validation warning [%s] %s" % (c, m), file=sys.stderr)
+            for c, m in rep.notices:
+                print("  validation NOTICE  [%s] %s" % (c, m), file=sys.stderr)
+            if n_err:
+                print("validation: %d error(s)" % n_err, file=sys.stderr)
+                if a.strict:
+                    sys.exit("ERROR: generated project failed validation "
+                             "(--strict); see messages above")
+            else:
+                print("validation: PASS")
+        except ImportError:
+            print("validation: skipped (validate_kicad.py not found)",
+                  file=sys.stderr)
 
 if __name__ == "__main__":
     main()

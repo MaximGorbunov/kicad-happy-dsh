@@ -34,7 +34,7 @@
         { "type": "input", "num": 4, "name": "CSN", "at": [-12.7, 0.635, 0], "length": 7.62 },
         { "type": "input", "num": 5, "name": "SCK", "at": [-12.7, -0.635, 0], "length": 7.62 },
         { "type": "input", "num": 6, "name": "MOSI", "at": [-12.7, -1.905, 0], "length": 7.62 },
-        { "type": "input", "num": 7, "name": "MISO", "at": [-12.7, -3.175, 0], "length": 7.62 },
+        { "type": "output", "num": 7, "name": "MISO", "at": [-12.7, -3.175, 0], "length": 7.62 },
         { "type": "output", "num": 8, "name": "IRQ", "at": [-12.7, -4.445, 0], "length": 7.62 }
       ]
     },

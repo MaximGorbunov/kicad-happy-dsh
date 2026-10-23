@@ -19,6 +19,10 @@ description: >-
 Generate a complete, valid KiCad project from a JSON design spec. This is the
 **creation** complement to the `kicad` skill (which analyzes existing files).
 
+Run all commands from the repository root.
+
+**Requirements:** Python 3.10+ stdlib only. If `python3 --version` is below 3.10 (macOS ships 3.9), use the DSH-bundled Python returned by `load_workspace_dependencies`.
+
 ## Related skills
 
 | Skill | Purpose |
@@ -34,16 +38,16 @@ Generate a complete, valid KiCad project from a JSON design spec. This is the
    Reuse `references/verified-pinouts.md` for ATtiny85 / IRLZ44N / nRF24L01+
    pin names so custom symbols are correct the first time.
 2. **Write the spec** as `design.json` (schema below). Model it on
-   `examples/bed_pump_receiver/design.json`.
+   `skills/kicad-generate/examples/bed_pump_receiver/design.json`.
 3. **Generate**:
    ```
-   python3 scripts/kicad_author.py design.json --out <project-dir>
+   python3 skills/kicad-generate/scripts/kicad_author.py design.json --out <project-dir>
    ```
    Emits `.kicad_pro`, `.kicad_sch`, `.kicad_pcb`, `.kicad_sym`,
    a `<project>.pretty/` directory, `sym-lib-table`, `fp-lib-table`.
 4. **Validate** (no GUI needed):
    - Balance-check every file (string-aware paren count = 0).
-   - `kicad` skill: `analyze_schematic.py` and `analyze_pcb.py`.
+   - `kicad` skill: `python3 skills/kicad/scripts/analyze_schematic.py <f>.kicad_sch --output sch.json` and `python3 skills/kicad/scripts/analyze_pcb.py <f>.kicad_pcb --full --output pcb.json`.
    - Fix any format findings. Courtyard-overlap findings are **layout** issues —
      resolve in the GUI.
 5. **Hand to the GUI**: open the project, run **ERC**, run **DRC** and tidy the
@@ -113,6 +117,34 @@ Notes:
 
 ## Validation without a GUI
 
+**Always validate after generating.** `validate_kicad.py` is the hard gate — it
+catches the whole class of "opens in KiCad as question marks / won't load"
+bugs that a bare balance check misses:
+
+```bash
+# Full validation (deterministic invariants + real KiCad ERC/parse if
+# kicad-cli is installed). Exit 0 = good, 1 = defect.
+python3 skills/kicad-generate/scripts/validate_kicad.py <project-dir-or-file>
+
+# CI / no-KiCad environments: deterministic checks only (still catches the
+# question-marks bug class). --strict makes any defect a hard failure.
+python3 skills/kicad-generate/scripts/validate_kicad.py <project-dir> --no-cli --strict
+```
+
+What it checks, in layers:
+- **Layer 1 (always, stdlib-only):** balanced parens, correct root node
+  (`kicad_sch`/`kicad_pcb`/`kicad_symbol_lib`/`footprint`), every placed
+  `lib_id` has a matching `lib_symbols` cache entry (the question-marks bug),
+  no duplicate reference designators.
+- **Layer 2 (when `kicad-cli` present):** real KiCad `sch erc --format json`
+  (fails on unresolved-symbol `[???` markers), `pcb drc`, and `sym upgrade`/
+  `fp upgrade` as parse-validators for generated symbol/footprint libraries.
+
+`kicad_author.py` runs this automatically after every generation (add
+`--no-validate` to skip, `--strict` to fail the build on any defect).
+
+Manual fallback (only if you can't run the script above):
+
 ```
 # balance (string-aware)
 python3 -c "import sys; t=open(sys.argv[1]).read(); d=0;ist=False;esc=False
@@ -125,8 +157,8 @@ for c in t:
 print(d)" <file>
 
 # analyzers
-python3 ../kicad/scripts/analyze_schematic.py <f>.kicad_sch
-python3 ../kicad/scripts/analyze_pcb.py <f>.kicad_pcb
+python3 skills/kicad/scripts/analyze_schematic.py <f>.kicad_sch
+python3 skills/kicad/scripts/analyze_pcb.py <f>.kicad_pcb
 ```
 
 ## Limitations
