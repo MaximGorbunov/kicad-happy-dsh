@@ -17,6 +17,8 @@ description: >-
 
 # KiCad Project Analysis Skill
 
+**Requirements:** Python 3.10+ stdlib only. If `python3 --version` is below 3.10 (macOS ships 3.9), use the DSH-bundled Python returned by `load_workspace_dependencies`.
+
 ## Related Skills
 
 | Skill | Purpose |
@@ -470,9 +472,7 @@ DigiKey is best (direct PDF URLs). element14 is reliable (no bot protection). LC
 
 **Structured datasheet extraction (for large designs or repeated reviews):** Pre-extract datasheet specs into cached JSON for faster, more consistent pin verification. This is especially valuable for designs with 10+ ICs where re-reading PDFs from scratch each time is slow.
 
-```bash
-python3 <skill-path>/scripts/datasheet_page_selector.py <pdf_path> --mpn <mpn> --category <category>
-```
+Page selection is provided by the `datasheets` skill (`skills/datasheets/scripts/datasheet_page_selector.py`, import-only — call `suggest_pages(pdf_path, mpn, category)` via the `datasheets` extraction pipeline). Do not invoke it as a CLI.
 
 After reading the selected pages and producing an extraction JSON, score and cache it using `datasheet_score` and `datasheet_extract_cache` modules. Extractions are stored in `datasheets/extracted/<MPN>.json` and reused across reviews. The **`datasheets` skill** owns the full extraction pipeline (schema, page selection, scoring rubric, consumer API) — see `skills/datasheets/SKILL.md` and its reference guides.
 

@@ -5,6 +5,8 @@ description: Search LCSC Electronics for electronic components — find parts by
 
 # LCSC Electronics — Component Search, Datasheets & Ordering
 
+**Requirements:** Python 3.10+ stdlib only. If `python3 --version` is below 3.10 (macOS ships 3.9), use the DSH-bundled Python returned by `load_workspace_dependencies`.
+
 ## Related Skills
 
 | Skill | Purpose |

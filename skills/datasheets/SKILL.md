@@ -5,6 +5,8 @@ description: Extract structured specifications from electronic component datashe
 
 # Datasheets Skill
 
+**Requirements:** Python 3.10+ stdlib only. If `python3 --version` is below 3.10 (macOS ships 3.9), use the DSH-bundled Python returned by `load_workspace_dependencies`.
+
 ## Related Skills
 
 | Skill | Relationship |
@@ -71,7 +73,7 @@ This skill owns:
 
 ## Extraction workflow
 
-Run `python3 skills/datasheets/scripts/plan_extraction.py <project>` to generate an orchestration plan, then `merge_results.py` to validate and merge per-task outputs. Full scout→plan→dispatch→merge procedure: [`references/extraction-pipeline.md`](references/extraction-pipeline.md).
+Run `python3 skills/datasheets/scripts/plan_extraction.py <MPN> <pdf_path>` to generate an orchestration plan, then `python3 skills/datasheets/scripts/merge_results.py <mpn> --cache-dir <cache_dir>` to validate and merge per-task outputs. Full scout→plan→dispatch→merge procedure: [`references/extraction-pipeline.md`](references/extraction-pipeline.md).
 
 ## Consuming extractions (v1.4 typed API)
 

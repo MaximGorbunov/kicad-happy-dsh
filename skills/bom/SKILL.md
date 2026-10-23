@@ -7,6 +7,8 @@ description: BOM (Bill of Materials) management for electronics projects — the
 
 BOM data lives in **KiCad schematic symbol properties** as the single source of truth. This skill orchestrates the full lifecycle: analyze the schematic, search distributors, validate parts, write properties back, export tracking CSVs, and generate order files.
 
+**Requirements:** Python 3.10+ stdlib only. If `python3 --version` is below 3.10 (macOS ships 3.9), use the DSH-bundled Python returned by `load_workspace_dependencies`.
+
 ## Related Skills
 
 | Skill | Purpose |
@@ -73,9 +75,9 @@ The script covers common patterns, but some projects use internal key systems or
 **Do this immediately.** Datasheets are essential context for validation and part selection. Run the preferred distributor's sync first; if some fail, try others — they share the same `datasheets/` directory and skip already-downloaded parts.
 
 ```bash
-python3 <digikey-skill-path>/scripts/sync_datasheets_digikey.py path/to/schematic.kicad_sch --recursive
-python3 <lcsc-skill-path>/scripts/sync_datasheets_lcsc.py path/to/schematic.kicad_sch --recursive
-python3 <element14-skill-path>/scripts/sync_datasheets_element14.py path/to/schematic.kicad_sch --recursive
+python3 <digikey-skill-path>/scripts/sync_datasheets_digikey.py path/to/schematic.kicad_sch
+python3 <lcsc-skill-path>/scripts/sync_datasheets_lcsc.py path/to/schematic.kicad_sch
+python3 <element14-skill-path>/scripts/sync_datasheets_element14.py path/to/schematic.kicad_sch
 ```
 
 DigiKey is best (direct PDF URLs). element14 is reliable (no bot protection). LCSC works for LCSC-only parts. Mouser is a last resort (often blocks downloads).

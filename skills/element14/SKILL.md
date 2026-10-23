@@ -5,6 +5,8 @@ description: Search Newark, Farnell, and element14 for electronic components —
 
 # element14 / Newark / Farnell — Component Search, Datasheets & Ordering
 
+**Requirements:** Python 3.10+ stdlib only. If `python3 --version` is below 3.10 (macOS ships 3.9), use the DSH-bundled Python returned by `load_workspace_dependencies`.
+
 ## Related Skills
 
 | Skill | Purpose |

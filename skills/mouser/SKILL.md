@@ -5,6 +5,8 @@ description: Search Mouser Electronics for electronic components — secondary s
 
 # Mouser Electronics Parts Search & Analysis
 
+**Requirements:** Python 3.10+ stdlib only. If `python3 --version` is below 3.10 (macOS ships 3.9), use the DSH-bundled Python returned by `load_workspace_dependencies`.
+
 ## Related Skills
 
 | Skill | Purpose |
