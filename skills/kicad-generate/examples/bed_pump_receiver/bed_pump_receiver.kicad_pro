@@ -1,0 +1,75 @@
+{
+	"board": {
+		"design_settings": {
+			"default_line_width": 0.2,
+			"default_trace_width": 0.25,
+			"min_line_width": 0.1,
+			"min_trace_width": 0.1
+		},
+		"layer_setup": [
+			{ "is_invisible": false, "name": "F.Cu", "thickness": 0.035, "type": "copper" },
+			{ "is_invisible": false, "name": "B.Cu", "thickness": 0.035, "type": "copper" }
+		],
+		"layer_constraints": [],
+		"board_constraints": { "width": 85, "height": 55 },
+		"stackup": [],
+		"zone_design_rules": { "min_line_width": 0.0, "min_via_annular_width": 0.0 },
+		"zone_connect_rules": { "type": 0 }
+	},
+	"cvpcb": { "rule_severities": {} },
+	"boards": [],
+	"general": {
+		"3dviewers": [],
+		"plot": { "layer_priority": [] },
+		"autobackup": true
+	},
+	"git": { "last_seen": "" },
+	"meta": {
+		"filename": "bed_pump_receiver.kicad_pro",
+		"version": 1
+	},
+	"net_settings": {
+		"drc_exclude_from_drc_check": [],
+		"rules": {
+			"allow_holes_in_copper": true,
+			"max_error": 0.005,
+			"min_clearance": 0.1,
+			"min_line": 0.1,
+			"min_resistor_pad_gap": 0.0,
+			"min_silk_clearance": 0.0,
+			"min_silk_line_width": 0.1,
+			"min_silk_text_width": 0.1,
+			"min_through_hole_pad_hole": 0.4,
+			"min_through_hole_pad_size": 0.5,
+			"min_track_width": 0.1,
+			"min_via_annular_width": 0.1,
+			"min_via_diameter": 0.3
+		},
+		"setup": {
+			"bus_width": 0.2,
+			"diff_pair_gap_width": 0.0,
+			"diff_pair_via_gap": 0.0,
+			"line_width": 0.2,
+			"min_clearance": 0.1,
+			"min_line_width": 0.1,
+			"min_silk_width": 0.1,
+			"min_text_size": 1.0,
+			"min_track_width": 0.1,
+			"min_via_annular_width": 0.1,
+			"min_via_diameter": 0.3
+		}
+	},
+	"pcbnew": {
+		"last_modifications": { "board": { "B.Cu": false, "F.Cu": false } }
+	},
+	"fields": { "default": [] },
+	"sheetname": "",
+	"sheets": [
+		{ "name": "Bed Pump Receiver (ATtiny85 + nRF24L01)", "path": "/27890f8d-bc0a-44e6-91a7-2f5698351251" }
+	],
+	"symbol_libs": [
+		{ "type": "KiCad", "uri": "sym-lib-table" },
+		{ "type": "KiCad", "uri": "fp-lib-table" }
+	],
+	"text_variables": {}
+}

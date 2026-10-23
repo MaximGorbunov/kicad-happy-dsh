@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "bed_pump_receiver")(type "KiCad")(uri "${KIPRJMOD}/bed_pump_receiver.kicad_sym")(options ""))
+)

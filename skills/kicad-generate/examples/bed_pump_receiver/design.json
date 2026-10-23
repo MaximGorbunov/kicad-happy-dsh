@@ -1,0 +1,169 @@
+{
+  "project": "bed_pump_receiver",
+  "title": "Bed Pump Receiver (ATtiny85 + nRF24L01)",
+  "date": "2026-10-23",
+  "rev": "1.0",
+  "board": { "w": 85, "h": 55, "thickness": 1.6 },
+  "kicad_syms_dir": "/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols",
+  "kicad_fps_dir": "/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints",
+  "gnd_zone": true,
+  "custom_symbols": [
+    {
+      "name": "ATtiny85", "ref": "U", "value": "ATtiny85",
+      "footprint": "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
+      "bodybox": [-10.16, 10.16, 10.16, -10.16],
+      "pins": [
+        { "type": "input", "num": 1, "name": "PB5/RST", "at": [15.24, -5.08, 180] },
+        { "type": "input", "num": 2, "name": "PB3", "at": [15.24, 0, 180] },
+        { "type": "input", "num": 3, "name": "PB4", "at": [15.24, -2.54, 180] },
+        { "type": "power_in", "num": 4, "name": "GND", "at": [0, -15.24, 90] },
+        { "type": "power_in", "num": 5, "name": "VCC", "at": [15.24, 7.62, 180] },
+        { "type": "input", "num": 6, "name": "PB2", "at": [15.24, 5.08, 180] },
+        { "type": "input", "num": 7, "name": "PB1", "at": [15.24, 2.54, 180] },
+        { "type": "input", "num": 8, "name": "PB0", "at": [0, 15.24, 270] }
+      ]
+    },
+    {
+      "name": "nRF24L01", "ref": "J", "value": "nRF24L01+",
+      "footprint": "bed_pump_receiver:nRF24L01P_Socket_8x1.27",
+      "bodybox": [-5.08, 5.08, 5.08, -5.08],
+      "pins": [
+        { "type": "power_in", "num": 1, "name": "GND", "at": [-12.7, 4.445, 0], "length": 7.62 },
+        { "type": "power_in", "num": 2, "name": "VCC", "at": [-12.7, 3.175, 0], "length": 7.62 },
+        { "type": "input", "num": 3, "name": "CE", "at": [-12.7, 1.905, 0], "length": 7.62 },
+        { "type": "input", "num": 4, "name": "CSN", "at": [-12.7, 0.635, 0], "length": 7.62 },
+        { "type": "input", "num": 5, "name": "SCK", "at": [-12.7, -0.635, 0], "length": 7.62 },
+        { "type": "input", "num": 6, "name": "MOSI", "at": [-12.7, -1.905, 0], "length": 7.62 },
+        { "type": "input", "num": 7, "name": "MISO", "at": [-12.7, -3.175, 0], "length": 7.62 },
+        { "type": "output", "num": 8, "name": "IRQ", "at": [-12.7, -4.445, 0], "length": 7.62 }
+      ]
+    },
+    {
+      "name": "Screw_Terminal_1x02", "ref": "J", "value": "Screw_Terminal_1x02",
+      "footprint": "bed_pump_receiver:Screw_Terminal_01x02_P5.08",
+      "bodybox": [-5.08, 5.08, 5.08, -5.08],
+      "pins": [
+        { "type": "passive", "num": 1, "name": "1", "at": [-12.7, 2.54, 0], "length": 7.62 },
+        { "type": "passive", "num": 2, "name": "2", "at": [-12.7, -2.54, 0], "length": 7.62 }
+      ]
+    },
+    {
+      "name": "ISP_2x03", "ref": "J", "value": "ISP_2x03",
+      "footprint": "Connector_PinHeader_2.54mm:PinHeader_2x03_P2.54mm_Vertical",
+      "bodybox": [-7.62, 7.62, 7.62, -7.62],
+      "pins": [
+        { "type": "power_in", "num": 1, "name": "VCC", "at": [-12.7, -5.08, 0], "length": 5.08 },
+        { "type": "power_in", "num": 2, "name": "GND", "at": [-12.7, 0, 0], "length": 5.08 },
+        { "type": "input", "num": 3, "name": "RST", "at": [-12.7, 5.08, 0], "length": 5.08 },
+        { "type": "input", "num": 4, "name": "MOSI", "at": [12.7, -5.08, 180], "length": 5.08 },
+        { "type": "input", "num": 5, "name": "MISO", "at": [12.7, 0, 180], "length": 5.08 },
+        { "type": "input", "num": 6, "name": "SCK", "at": [12.7, 5.08, 180], "length": 5.08 }
+      ]
+    }
+  ],
+  "custom_footprints": [
+    {
+      "name": "nRF24L01P_Socket_8x1.27", "attr": "through_hole",
+      "descr": "Socket for nRF24L01+ module, 8x1.27mm single-row header; module ~30x18mm, antenna to the right",
+      "tags": "nrf24l01;radio;socket",
+      "pads": [
+        { "num": 1, "x": 0, "y": 0, "sx": 2, "sy": 2, "drill": 1 },
+        { "num": 2, "x": 1.27, "y": 0, "sx": 2, "sy": 2, "drill": 1 },
+        { "num": 3, "x": 2.54, "y": 0, "sx": 2, "sy": 2, "drill": 1 },
+        { "num": 4, "x": 3.81, "y": 0, "sx": 2, "sy": 2, "drill": 1 },
+        { "num": 5, "x": 5.08, "y": 0, "sx": 2, "sy": 2, "drill": 1 },
+        { "num": 6, "x": 6.35, "y": 0, "sx": 2, "sy": 2, "drill": 1 },
+        { "num": 7, "x": 7.62, "y": 0, "sx": 2, "sy": 2, "drill": 1 },
+        { "num": 8, "x": 8.89, "y": 0, "sx": 2, "sy": 2, "drill": 1 }
+      ]
+    },
+    {
+      "name": "Screw_Terminal_01x02_P5.08", "attr": "through_hole",
+      "descr": "2-position screw terminal block, 5.08mm pitch",
+      "tags": "terminal;screw",
+      "pads": [
+        { "num": 1, "x": 0, "y": 0, "sx": 3, "sy": 3, "drill": 2 },
+        { "num": 2, "x": 5.08, "y": 0, "sx": 3, "sy": 3, "drill": 2 }
+      ]
+    }
+  ],
+  "pin_tip": {
+    "Device:R": { "1": [0, 3.81], "2": [0, -3.81] },
+    "Device:C": { "1": [0, 1.27], "2": [0, -1.27] },
+    "Device:LED": { "1": [-1.27, 0], "2": [1.27, 0] },
+    "Device:Fuse": { "1": [-1.905, 0], "2": [1.905, 0] },
+    "Diode:1N5819": { "1": [-1.27, 0], "2": [1.27, 0] },
+    "Transistor_FET:IRLZ44N": { "1": [-2.54, 0], "2": [3.81, 0.635], "3": [3.81, -0.635] },
+    "Regulator_Linear:LM7805_TO220": { "1": [-10.16, 0], "2": [0, -7.62], "3": [10.16, 0] },
+    "Regulator_Linear:AMS1117-3.3": { "1": [0, -7.62], "2": [10.16, 0], "3": [-10.16, 0] },
+    "bed_pump_receiver:ATtiny85": { "1": [15.24, -5.08], "2": [15.24, 0], "3": [15.24, -2.54], "4": [0, -15.24], "5": [15.24, 7.62], "6": [15.24, 5.08], "7": [15.24, 2.54], "8": [0, 15.24] },
+    "bed_pump_receiver:nRF24L01": { "1": [-12.7, 4.445], "2": [-12.7, 3.175], "3": [-12.7, 1.905], "4": [-12.7, 0.635], "5": [-12.7, -0.635], "6": [-12.7, -1.905], "7": [-12.7, -3.175], "8": [-12.7, -4.445] },
+    "bed_pump_receiver:Screw_Terminal_1x02": { "1": [-12.7, 2.54], "2": [-12.7, -2.54] },
+    "bed_pump_receiver:ISP_2x03": { "1": [-12.7, -5.08], "2": [-12.7, 0], "3": [-12.7, 5.08], "4": [12.7, -5.08], "5": [12.7, 0], "6": [12.7, 5.08] }
+  },
+  "n_pins": {
+    "Device:R": 2, "Device:C": 2, "Device:LED": 2, "Device:Fuse": 2,
+    "Diode:1N5819": 2, "Transistor_FET:IRLZ44N": 3,
+    "Regulator_Linear:LM7805_TO220": 3, "Regulator_Linear:AMS1117-3.3": 3,
+    "bed_pump_receiver:ATtiny85": 8, "bed_pump_receiver:nRF24L01": 8,
+    "bed_pump_receiver:Screw_Terminal_1x02": 2, "bed_pump_receiver:ISP_2x03": 6
+  },
+  "pad_off": {
+    "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm": { "1": [-2.475, -1.905], "2": [-2.475, -0.635], "3": [-2.475, 0.635], "4": [-2.475, 1.905], "5": [2.475, 1.905], "6": [2.475, 0.635], "7": [2.475, -0.635], "8": [2.475, -1.905] },
+    "Package_TO_SOT_THT:TO-220-3_Horizontal_TabDown": { "1": [0, 0], "2": [2.54, 0], "3": [5.08, 0] },
+    "Package_TO_SOT_SMD:SOT-223-3_TabPin2": { "1": [-3.15, -2.3], "2": [3.15, 0], "3": [-3.15, 2.3] },
+    "Resistor_SMD:R_0805_2012Metric": { "1": [-0.9125, 0], "2": [0.9125, 0] },
+    "Capacitor_SMD:C_0805_2012Metric": { "1": [-0.95, 0], "2": [0.95, 0] },
+    "Capacitor_SMD:C_1210_3225Metric": { "1": [-1.475, 0], "2": [1.475, 0] },
+    "Diode_SMD:D_SMA": { "1": [-2.0, 0], "2": [2.0, 0] },
+    "LED_SMD:LED_0805_2012Metric": { "1": [-0.9375, 0], "2": [0.9375, 0] },
+    "Fuse:Fuse_1206_3216Metric": { "1": [-1.0, 0], "2": [1.0, 0] },
+    "Capacitor_THT:CP_Radial_D8.0mm_P5.00mm": { "1": [0, 0], "2": [5.0, 0] },
+    "bed_pump_receiver:nRF24L01P_Socket_8x1.27": { "1": [0, 0], "2": [1.27, 0], "3": [2.54, 0], "4": [3.81, 0], "5": [5.08, 0], "6": [6.35, 0], "7": [7.62, 0], "8": [8.89, 0] },
+    "bed_pump_receiver:Screw_Terminal_01x02_P5.08": { "1": [0, 0], "2": [5.08, 0] },
+    "Connector_PinHeader_2.54mm:PinHeader_2x03_P2.54mm_Vertical": { "1": [0, 0], "2": [0, 2.54], "3": [0, 5.08], "4": [2.54, 0], "5": [2.54, 2.54], "6": [2.54, 5.08] },
+    "MountingHole:MountingHole_3.2mm_M3": {}
+  },
+  "comps": [
+    { "ref": "U3", "value": "ATtiny85", "lib_id": "bed_pump_receiver:ATtiny85", "footprint": "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm", "x": 100, "y": 100, "pbx": 18, "pby": 32, "pins": { "1": "RST", "2": "CSN_MCU", "3": "PUMP", "4": "GND", "5": "5V", "6": "SCK_MCU", "7": "MISO", "8": "MOSI_MCU" } },
+    { "ref": "J1", "value": "nRF24L01+", "lib_id": "bed_pump_receiver:nRF24L01", "footprint": "bed_pump_receiver:nRF24L01P_Socket_8x1.27", "x": 200, "y": 100, "pbx": 27, "pby": 32, "pins": { "1": "GND", "2": "3V3", "3": "CE", "4": "CSN_D", "5": "SCK_D", "6": "MOSI_D", "7": "MISO", "8": null } },
+    { "ref": "U1", "value": "L7805", "lib_id": "Regulator_Linear:LM7805_TO220", "footprint": "Package_TO_SOT_THT:TO-220-3_Horizontal_TabDown", "x": 50, "y": 40, "pbx": 34, "pby": 50, "pins": { "1": "VBAT", "2": "GND", "3": "5V" } },
+    { "ref": "U2", "value": "AMS1117-3.3", "lib_id": "Regulator_Linear:AMS1117-3.3", "footprint": "Package_TO_SOT_SMD:SOT-223-3_TabPin2", "x": 50, "y": 80, "pbx": 52, "pby": 50, "pins": { "1": "GND", "2": "3V3", "3": "5V" } },
+    { "ref": "Q1", "value": "IRLZ44N", "lib_id": "Transistor_FET:IRLZ44N", "footprint": "Package_TO_SOT_THT:TO-220-3_Horizontal_TabDown", "x": 50, "y": 140, "pbx": 8, "pby": 20, "pins": { "1": "GATE", "2": "PUMP_D", "3": "GND" } },
+    { "ref": "R1", "value": "220R", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 75, "y": 125, "pbx": 8, "pby": 16, "prot": 90, "pins": { "1": "PUMP", "2": "GATE" } },
+    { "ref": "R2", "value": "10k", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 60, "y": 150, "pbx": 8, "pby": 13.5, "prot": 90, "pins": { "1": "GATE", "2": "GND" } },
+    { "ref": "R_RST", "value": "10k", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 115, "y": 92, "pbx": 12, "pby": 30.095, "prot": 90, "pins": { "1": "5V", "2": "RST" } },
+    { "ref": "R_CE", "value": "1k", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 185, "y": 102, "pbx": 29.54, "pby": 29, "prot": 90, "pins": { "1": "3V3", "2": "CE" } },
+    { "ref": "R_CSN_T", "value": "2.2k", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 120, "y": 108, "pbx": 23, "pby": 32, "pins": { "1": "CSN_MCU", "2": "CSN_D" } },
+    { "ref": "R_CSN_B", "value": "2.2k", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 120, "y": 118, "pbx": 23, "pby": 35, "pins": { "1": "CSN_D", "2": "GND" } },
+    { "ref": "R_SCK_T", "value": "2.2k", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 130, "y": 108, "pbx": 23, "pby": 29, "pins": { "1": "SCK_MCU", "2": "SCK_D" } },
+    { "ref": "R_SCK_B", "value": "2.2k", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 130, "y": 118, "pbx": 23, "pby": 26, "pins": { "1": "SCK_D", "2": "GND" } },
+    { "ref": "R_MOSI_T", "value": "2.2k", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 140, "y": 108, "pbx": 23, "pby": 26.5, "pins": { "1": "MOSI_MCU", "2": "MOSI_D" } },
+    { "ref": "R_MOSI_B", "value": "2.2k", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 140, "y": 118, "pbx": 23, "pby": 23.5, "pins": { "1": "MOSI_D", "2": "GND" } },
+    { "ref": "C1", "value": "100uF", "lib_id": "Device:C", "footprint": "Capacitor_THT:CP_Radial_D8.0mm_P5.00mm", "x": 30, "y": 40, "pbx": 24.5, "pby": 48, "pins": { "1": "GND", "2": "VBAT" } },
+    { "ref": "C2", "value": "100nF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_0805_2012Metric", "x": 40, "y": 30, "pbx": 42.5, "pby": 48, "pins": { "1": "GND", "2": "VBAT" } },
+    { "ref": "C3", "value": "10uF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_1210_3225Metric", "x": 60, "y": 30, "pbx": 42.5, "pby": 49, "prot": 90, "pins": { "1": "GND", "2": "5V" } },
+    { "ref": "C4", "value": "100nF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_0805_2012Metric", "x": 70, "y": 30, "pbx": 42.5, "pby": 52.5, "prot": 90, "pins": { "1": "GND", "2": "5V" } },
+    { "ref": "C5", "value": "10uF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_1210_3225Metric", "x": 40, "y": 70, "pbx": 60, "pby": 49, "prot": 90, "pins": { "1": "GND", "2": "5V" } },
+    { "ref": "C6", "value": "10uF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_1210_3225Metric", "x": 50, "y": 70, "pbx": 60, "pby": 52.5, "prot": 90, "pins": { "1": "GND", "2": "3V3" } },
+    { "ref": "C7", "value": "100nF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_0805_2012Metric", "x": 60, "y": 70, "pbx": 68, "pby": 49, "prot": 90, "pins": { "1": "GND", "2": "5V" } },
+    { "ref": "C8", "value": "100nF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_0805_2012Metric", "x": 70, "y": 70, "pbx": 68, "pby": 52.5, "prot": 90, "pins": { "1": "GND", "2": "3V3" } },
+    { "ref": "C9", "value": "100nF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_0805_2012Metric", "x": 95, "y": 85, "pbx": 18, "pby": 37.5, "pins": { "1": "GND", "2": "5V" } },
+    { "ref": "C10", "value": "10uF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_1210_3225Metric", "x": 105, "y": 85, "pbx": 18, "pby": 40, "pins": { "1": "GND", "2": "5V" } },
+    { "ref": "C11", "value": "10uF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_1210_3225Metric", "x": 195, "y": 95, "pbx": 33, "pby": 29, "prot": 90, "pins": { "1": "GND", "2": "3V3" } },
+    { "ref": "C12", "value": "100nF", "lib_id": "Device:C", "footprint": "Capacitor_SMD:C_0805_2012Metric", "x": 205, "y": 95, "pbx": 36, "pby": 29, "prot": 90, "pins": { "1": "GND", "2": "3V3" } },
+    { "ref": "D1", "value": "1N5819", "lib_id": "Diode:1N5819", "footprint": "Diode_SMD:D_SMA", "x": 80, "y": 140, "pbx": 18, "pby": 20, "pins": { "1": "VBAT", "2": "PUMP_D" } },
+    { "ref": "D2", "value": "1N5819", "lib_id": "Diode:1N5819", "footprint": "Diode_SMD:D_SMA", "x": 80, "y": 150, "pbx": 18, "pby": 24, "pins": { "1": "VBAT", "2": "PUMP_D" } },
+    { "ref": "LED1", "value": "RED", "lib_id": "Device:LED", "footprint": "LED_SMD:LED_0805_2012Metric", "x": 150, "y": 140, "pbx": 40, "pby": 12.5, "prot": 90, "pins": { "1": "GND", "2": "LED_A" } },
+    { "ref": "R_LED", "value": "1k", "lib_id": "Device:R", "footprint": "Resistor_SMD:R_0805_2012Metric", "x": 160, "y": 140, "pbx": 43, "pby": 12.5, "prot": 90, "pins": { "1": "5V", "2": "LED_A" } },
+    { "ref": "F1", "value": "3A", "lib_id": "Device:Fuse", "footprint": "Fuse:Fuse_1206_3216Metric", "x": 30, "y": 60, "pbx": 17, "pby": 48, "pins": { "1": "VBAT", "2": "VBAT" } },
+    { "ref": "J2", "value": "12V_IN", "lib_id": "bed_pump_receiver:Screw_Terminal_1x02", "footprint": "bed_pump_receiver:Screw_Terminal_01x02_P5.08", "x": 20, "y": 60, "pbx": 8, "pby": 48, "pins": { "1": "GND", "2": "VBAT" } },
+    { "ref": "J3", "value": "PUMP", "lib_id": "bed_pump_receiver:Screw_Terminal_1x02", "footprint": "bed_pump_receiver:Screw_Terminal_01x02_P5.08", "x": 90, "y": 160, "pbx": 26, "pby": 18, "pins": { "1": "VBAT", "2": "PUMP_D" } },
+    { "ref": "J4", "value": "VALVE", "lib_id": "bed_pump_receiver:Screw_Terminal_1x02", "footprint": "bed_pump_receiver:Screw_Terminal_01x02_P5.08", "x": 110, "y": 160, "pbx": 26, "pby": 9, "pins": { "1": "VBAT", "2": "PUMP_D" } },
+    { "ref": "J5", "value": "ISP_2x03", "lib_id": "bed_pump_receiver:ISP_2x03", "footprint": "Connector_PinHeader_2.54mm:PinHeader_2x03_P2.54mm_Vertical", "x": 130, "y": 150, "pbx": 48, "pby": 8, "pins": { "1": "5V", "2": "GND", "3": "RST", "4": "MOSI_MCU", "5": "MISO", "6": "SCK_MCU" } },
+    { "ref": "H1", "value": "MountingHole", "lib_id": "MountingHole:MountingHole_3.2mm_M3", "footprint": "MountingHole:MountingHole_3.2mm_M3", "x": 20, "y": 20, "pbx": 3, "pby": 3, "pins": {} },
+    { "ref": "H2", "value": "MountingHole", "lib_id": "MountingHole:MountingHole_3.2mm_M3", "footprint": "MountingHole:MountingHole_3.2mm_M3", "x": 20, "y": 30, "pbx": 82, "pby": 3, "pins": {} },
+    { "ref": "H3", "value": "MountingHole", "lib_id": "MountingHole:MountingHole_3.2mm_M3", "footprint": "MountingHole:MountingHole_3.2mm_M3", "x": 20, "y": 40, "pbx": 3, "pby": 52, "pins": {} },
+    { "ref": "H4", "value": "MountingHole", "lib_id": "MountingHole:MountingHole_3.2mm_M3", "footprint": "MountingHole:MountingHole_3.2mm_M3", "x": 20, "y": 50, "pbx": 82, "pby": 52, "pins": {} }
+  ]
+}

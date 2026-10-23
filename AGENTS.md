@@ -1,7 +1,7 @@
 # kicad-happy — DSH-native KiCad design-review suite
 
 This workspace is a DeepSeek Harness (DSH) skill suite for KiCad 5–10
-electronics design. All 12 skills in `skills/` (linked from `.dsh/skills/`)
+electronics design. All 13 skills in `skills/` (linked from `.dsh/skills/`)
 are loaded into your skill catalog automatically.
 
 ## Skills
