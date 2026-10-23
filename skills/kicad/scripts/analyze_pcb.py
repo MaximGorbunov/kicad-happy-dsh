@@ -13,6 +13,7 @@ Parses a .kicad_pcb file and outputs structured JSON with:
 Usage:
     python analyze_pcb.py <file.kicad_pcb|file.kicad_pro|dir/> [--output file.json]
 """
+from __future__ import annotations
 
 import heapq
 import json
@@ -6790,7 +6791,24 @@ def analyze_pcb(path: str, *, proximity: bool = False,
         else:
             _resolved_power_rails, _power_rails_source = None, "heuristic"
 
-    root = parse_file(path)
+    try:
+        root = parse_file(path)
+    except ValueError as e:
+        # Malformed/truncated S-expression. Fail loudly with a clean message
+        # instead of a raw traceback (or a silent empty envelope) so a
+        # downstream agent can't mistake an unparsed file for a clean board.
+        print(f"Error: could not parse {path}: {e}", file=sys.stderr)
+        print("The file is not a valid KiCad PCB (truncated, malformed, "
+              "or a different file type).", file=sys.stderr)
+        sys.exit(2)
+    # Guard against a file that is syntactically valid S-expression but not a
+    # PCB (e.g. arbitrary text parses as a bare atom). Without this, such input
+    # yields an EMPTY but well-formed envelope with exit 0.
+    if not isinstance(root, list) or not root or root[0] != "kicad_pcb":
+        _head = root[0] if isinstance(root, list) and root else repr(root)[:40]
+        print(f"Error: {path} is not a KiCad PCB "
+              f"(root node is {_head}, expected 'kicad_pcb').", file=sys.stderr)
+        sys.exit(2)
 
     layers = extract_layers(root)
     setup = extract_setup(root)

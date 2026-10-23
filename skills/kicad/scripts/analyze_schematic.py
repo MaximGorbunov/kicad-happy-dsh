@@ -14,6 +14,7 @@ Usage:
 
 Output is JSON to stdout (or file if --output specified).
 """
+from __future__ import annotations
 
 import json
 import math
@@ -9461,7 +9462,25 @@ def analyze_schematic(path: str, project_root: str | None = None,
         return parse_legacy_schematic(path, analysis_dir=analysis_dir)
 
     # Parse root sheet and all sub-sheets recursively via parse_all_sheets().
-    root_tree = parse_file(path)
+    try:
+        root_tree = parse_file(path)
+    except ValueError as e:
+        # Malformed/truncated S-expression. Fail loudly with a clean message
+        # instead of a raw traceback (or worse, a silent empty envelope) so a
+        # downstream agent can't mistake an unparsed file for a clean design.
+        print(f"Error: could not parse {path}: {e}", file=sys.stderr)
+        print("The file is not a valid KiCad schematic (truncated, malformed, "
+              "or a different file type).", file=sys.stderr)
+        sys.exit(2)
+    # Guard against a file that is syntactically valid S-expression but not a
+    # schematic (e.g. arbitrary text like "hello" parses as a bare atom). Without
+    # this, such input yields an EMPTY but well-formed envelope with exit 0.
+    if (not isinstance(root_tree, list) or not root_tree
+            or root_tree[0] != "kicad_sch"):
+        _head = root_tree[0] if isinstance(root_tree, list) and root_tree else repr(root_tree)[:40]
+        print(f"Error: {path} is not a KiCad schematic "
+              f"(root node is {_head}, expected 'kicad_sch').", file=sys.stderr)
+        sys.exit(2)
 
     is_sub = detect_sub_sheet(root_tree, file_path=path)
     hierarchy_ctx = None

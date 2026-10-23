@@ -7,6 +7,7 @@ Handles quoted strings, multi-line expressions, and large files efficiently.
 Usage:
     from sexp_parser import parse_file, find_all, find_first, get_property
 """
+from __future__ import annotations
 
 import re
 import sys
@@ -97,6 +98,15 @@ def _parse_tokens(tokens: list[str], pos: int) -> tuple[Any, int]:
         while pos < len(tokens) and tokens[pos] != ")":
             item, pos = _parse_tokens(tokens, pos)
             lst.append(item)
+        # KH-101: an unterminated list means the file was truncated/malformed.
+        # Without this, a truncated file silently yields a partial tree and the
+        # analyzer emits a valid-looking EMPTY envelope (exit 0) that a
+        # downstream gate would misread as a clean design.
+        if pos >= len(tokens):
+            raise ValueError(
+                "Unterminated S-expression list — file is truncated or malformed "
+                "(ran out of tokens before the closing ')')"
+            )
         return lst, pos + 1  # skip ')'
     else:
         return tokens[pos], pos + 1
