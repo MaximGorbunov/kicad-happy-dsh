@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in kicad-happy, please report it privately via [GitHub Security Advisories](https://github.com/aklofas/kicad-happy/security/advisories/new).
+If you discover a security vulnerability in kicad-happy, please report it privately via [GitHub Security Advisories](https://github.com/MaximGorbunov/kicad-happy-dsh/security/advisories/new).
 
 Do not open a public issue for security vulnerabilities.
 
