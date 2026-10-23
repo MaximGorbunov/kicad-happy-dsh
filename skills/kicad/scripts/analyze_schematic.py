@@ -9553,7 +9553,7 @@ def analyze_schematic(path: str, project_root: str | None = None,
                     # peers — get their child sheets merged in too. Pure
                     # Altium-flat imports (no inner refs) walk this loop
                     # exactly once per peer with no recursion. PR #19
-                    # follow-up #14 (Copilot review 3221428004).
+                    # follow-up #14 (review 3221428004).
                     to_parse = list(extra_sheets)
                     while to_parse:
                         sheet_path = to_parse.pop(0)

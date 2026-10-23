@@ -145,6 +145,24 @@ Prefer an explicit, machine-pinned path instead of symlinks? Add a
 Custom skill dirs rank between project roots and user roots, so they coexist
 with Modes A/B without name collisions (project-level skills win on a clash).
 
+**Optional — MCP server (tool-level access from any workspace):**
+
+The repo ships [`mcp/server.py`](mcp/README.md), a stdio MCP server exposing
+the analyzers, BOM tools, and LCSC search as MCP tools. Wire it into a DSH
+profile patch (`~/.dsh/profiles/<profile>/cordis.patch.yml`):
+
+```yaml
+- insert:
+    - id: mcp-kicad-happy
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: kicad-happy
+        transport: stdio
+        command: python3 /absolute/path/to/kicad-happy-dsh/mcp/server.py
+```
+
+See [mcp/README.md](mcp/README.md) for the tool list and options.
+
 The analysis scripts are **pure Python 3.10+** with zero required
 dependencies. No pip install, no Docker, no KiCad installation needed. DSH
 bundles Python 3.12, so no separate Python setup is required even on macOS
@@ -176,6 +194,7 @@ See the **[GitHub Action setup guide](github-action.md)** for workflow examples,
 
 | Skill         | What it does                                                                                                                                                                             |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **kicad-happy** | 🧭 Hub — orchestrates the full suite for complete reviews and multi-board/multi-MPN work (parallel subagents, workflows, report delivery).                                    |
 | **kicad**     | ⚡ Parse and analyze KiCad schematics, PCB layouts, Gerbers, and PDF reference designs. Automated subcircuit detection, design review, DFM.                                               |
 | **spice**     | 🔬 SPICE simulation — generates testbenches for detected subcircuits, validates filter frequencies, opamp gains, divider ratios. Monte Carlo tolerance analysis. ngspice, LTspice, Xyce. |
 | **emc**       | 📡 EMC pre-compliance — 44 rule checks for radiated emission risks, PDN impedance, diff pair skew, ESD paths. FCC/CISPR/automotive/military.                                             |

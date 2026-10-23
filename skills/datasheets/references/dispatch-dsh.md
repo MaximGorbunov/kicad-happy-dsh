@@ -1,8 +1,8 @@
-# Claude Code Dispatcher Recipe
+# DeepSeek Harness Dispatcher Recipe
 
-> **Reference dispatcher for v1.4 Phase 3a.** Satisfies `dispatcher-contract.md` using Claude Code's `Agent` tool.
+> **Reference dispatcher for v1.4 Phase 3a.** Satisfies `dispatcher-contract.md` using DSH's `subagent` tool.
 
-This document tells an orchestrator running inside Claude Code how to dispatch the per-task subagents for an extraction plan. It assumes the orchestrator has read `dispatcher-contract.md` and the relevant prompt templates.
+This document tells an orchestrator running inside DeepSeek Harness how to dispatch the per-task subagents for an extraction plan. It assumes the orchestrator has read `dispatcher-contract.md` and the relevant prompt templates.
 
 ## Inputs
 
@@ -19,16 +19,15 @@ If `<mpn>.scout.json` does not exist, run the scout first:
 
 1. Read `skills/datasheets/prompts/scout.md`.
 2. Substitute placeholders: `{{MPN}}` = `<plan.mpn>`, `{{PDF_PATH}}` = `<plan.pdf_path>`, `{{SCHEMA_PATH}}` = `skills/datasheets/schemas/scout.schema.json`.
-3. Invoke `Agent` with:
-   - `subagent_type: general-purpose`
+3. Invoke `subagent` with:
    - `description: "Datasheet scout for <mpn>"`
    - `prompt`: the substituted prompt
-4. Capture the agent's JSON output. Validate against `skills/datasheets/schemas/scout.schema.json`. If valid, write the unwrapped JSON to `<cache_dir>/<mpn>.scout.json` AND a wrapped version to `<cache_dir>/<mpn>.scout.result.json` (status complete, schema_version 1.0, extracted_at now, model_tier B, model_id claude-{current model}, data = the JSON).
+4. Capture the agent's JSON output. Validate against `skills/datasheets/schemas/scout.schema.json`. If valid, write the unwrapped JSON to `<cache_dir>/<mpn>.scout.json` AND a wrapped version to `<cache_dir>/<mpn>.scout.result.json` (status complete, schema_version 1.0, extracted_at now, model_tier B, model_id = the current DSH model id, data = the JSON).
 5. Then re-invoke `plan_extraction.py <mpn> <pdf_path> --use-cached-scout --cache-dir <cache_dir>` to generate the plan.
 
 ### Step 2 — Dispatch per-task subagents in parallel
 
-For each `task` in `plan.tasks` with `status: "pending"` and `depends_on: []`, dispatch in parallel **in a single Claude Code message containing one `Agent` tool-call per task**.
+For each `task` in `plan.tasks` with `status: "pending"` and `depends_on: []`, dispatch in parallel **in a single assistant message containing one `subagent` tool-call per task**.
 
 For each task:
 
@@ -38,12 +37,11 @@ For each task:
    - `{{PDF_PATH}}` ← `plan.pdf_path`
    - `{{PAGES}}` ← human-readable formatted list (e.g. `task.pages = [5,6,13,14,15]` → `"5, 6, 13–15"`)
    - `{{SCHEMA_PATH}}` ← `task.schema`
-3. Invoke `Agent` with:
-   - `subagent_type: general-purpose`
+3. Invoke `subagent` with:
    - `description: "Datasheet <task.subagent_role> extractor for <mpn>"`
    - `prompt`: the substituted prompt (which includes the page list as part of the agent's instructions and the schema path as the validation contract)
 
-**All three (base, pinout, regulator) for LM2596-ADJ go in one message.** Claude Code dispatches them concurrently. Wait for all to return.
+**All three (base, pinout, regulator) for LM2596-ADJ go in one message.** DSH dispatches them concurrently; you are notified as each one finishes. Wait for all to return.
 
 ### Step 3 — Wrap and validate each agent output
 
@@ -59,7 +57,7 @@ For each returned agent output:
      "status": "complete" or "failed",
      "extracted_at": "<now ISO-8601>",
      "model_tier": "<task.tier>",
-     "model_id": "claude-<current Claude Code model>",
+     "model_id": "<current DSH model id>",
      "data": <agent JSON, or null>,
      "error": "<validation error message>"  // only if status == failed
    }
@@ -92,7 +90,7 @@ For each failed task:
    Re-read the relevant pages and produce a corrected output. Pay particular attention to: <hint based on error category — e.g. "missing required field topology", "min > max in VIN_max">.
    ```
 
-3. Invoke `Agent` again with the augmented prompt.
+3. Invoke `subagent` again with the augmented prompt.
 4. Wrap and write the new result file (overwriting the failed one).
 
 ### Step 6 — Re-merge with --retry-failed
@@ -105,17 +103,19 @@ Exit code 0 always (this is the second-and-final merge). Tasks that succeeded me
 
 ## Concurrency note
 
-Claude Code's `Agent` tool supports parallel tool-call dispatch within a single message. Issuing all three Phase 3a tasks (base, pinout, regulator) in one message gives ~3× speedup over serial. If context bloat becomes an issue (long conversations after multiple PDFs), fall back to two messages: `[base, pinout]` then `[regulator]`.
+DSH's `subagent` tool supports parallel dispatch: start several subagents in a single assistant message and they run concurrently in independent contexts. Issuing all three Phase 3a tasks (base, pinout, regulator) in one message gives ~3× speedup over serial. If context bloat becomes an issue (long conversations after multiple PDFs), fall back to two messages: `[base, pinout]` then `[regulator]`.
+
+For whole-board or multi-MPN plans, prefer the `workflow` tool: a script that fans the plan out across subagents with phases and structured results, instead of dispatching turn by turn.
 
 ## Cost ledger (optional)
 
-If you want to record cost data for analysis, append one JSONL entry per `Agent` invocation to `<cache_dir>/_cost_ledger.jsonl`:
+If you want to record cost data for analysis, append one JSONL entry per `subagent` invocation to `<cache_dir>/_cost_ledger.jsonl`:
 
 ```json
-{"run_id": "20260425T100000Z-a1b2c3", "mpn": "LM2596-ADJ", "task_id": "scout", "tier": "B", "model_id": "claude-sonnet-4-6", "tokens_in": null, "tokens_out": null, "cost_usd": null, "success": true, "extracted_at": "2026-04-25T10:00:30Z"}
+{"run_id": "20260425T100000Z-a1b2c3", "mpn": "LM2596-ADJ", "task_id": "scout", "tier": "B", "model_id": "<current DSH model id>", "tokens_in": null, "tokens_out": null, "cost_usd": null, "success": true, "extracted_at": "2026-04-25T10:00:30Z"}
 ```
 
-Tokens and cost are unavailable from inside Claude Code's `Agent` tool — leave them null in v1.4. v1.5 SDK dispatcher populates them.
+Tokens and cost are unavailable from inside DSH's `subagent` tool — leave them null in v1.4. A v1.5 SDK dispatcher would populate them.
 
 ## Failure modes to watch for
 
@@ -132,12 +132,12 @@ USER: Run Phase 3a extraction for LM2596-ADJ from /path/to/LM2596.pdf
 
 ORCHESTRATOR:
   - Run plan_extraction (which would dispatch scout — but cached-scout flow:
-    first invoke scout subagent via Agent tool, write scout.json, then
+    first invoke scout subagent via the subagent tool, write scout.json, then
     invoke plan_extraction --use-cached-scout)
-  - [Single Agent call: scout]
+  - [Single subagent call: scout]
   - Write LM2596-ADJ.scout.json + LM2596-ADJ.scout.result.json
   - Run plan_extraction.py LM2596-ADJ /path/to/LM2596.pdf --use-cached-scout
-  - [Single message with three parallel Agent calls: base, pinout, regulator]
+  - [Single message with three parallel subagent calls: base, pinout, regulator]
   - Wrap and write 3 result files
   - Run merge_results.py LM2596-ADJ
   - If any failures → retry once, re-merge with --retry-failed
@@ -163,7 +163,7 @@ When you see a task with `task_type: "review"`:
 |-----------|------|----------------|
 | `design_context` | B (cheaper) | `skills/kicad/review/prompts/design_context.md` |
 
-Same dispatch primitive (Claude Code `Task` tool); same output-validation contract (validate against `result_schema` after subagent returns); same retry semantics (one retry on hard fail with error context).
+Same dispatch primitive (DSH `subagent` tool); same output-validation contract (validate against `result_schema` after subagent returns); same retry semantics (one retry on hard fail with error context).
 
 ### Merge after design_context task completes
 

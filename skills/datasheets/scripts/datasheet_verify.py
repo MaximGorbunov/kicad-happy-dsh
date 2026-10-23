@@ -5,7 +5,7 @@ connections. Produces findings for voltage violations, missing required
 external components, and decoupling inadequacy.
 
 Requires datasheets/extracted/ cache populated by the LLM extraction
-pipeline (via sync_datasheets_digikey + Claude extraction).
+pipeline (via sync_datasheets_digikey + agent extraction).
 """
 
 import json

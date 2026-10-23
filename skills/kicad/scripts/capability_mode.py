@@ -120,7 +120,7 @@ def _fresh_record(datasheet_extraction, cache_dir, llm_review_status, schema_ver
         "llm_review": llm_review_status,
         "insertion_points_active": [],
         "schema_versions": schema_versions or _read_schema_versions(),
-        "platform": "claude-code",
+        "platform": "deepseek-harness",
         "tier_map": {},
     }
 

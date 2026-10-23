@@ -167,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.use_cached_scout:
         print(
             "error: live scout dispatch is not implemented in plan_extraction.py. "
-            "Run the scout subagent via dispatch-claude-code.md (or any dispatcher), "
+            "Run the scout subagent via dispatch-dsh.md (or any dispatcher), "
             "write its output to <cache>/<mpn>.scout.json, then re-invoke with --use-cached-scout.",
             file=sys.stderr,
         )
@@ -190,7 +190,7 @@ def main(argv: list[str] | None = None) -> int:
     plan = _build_plan(args.mpn, args.pdf_path, pdf_sha, args.cache_dir, scout)
     plan_path.write_text(json.dumps(plan, indent=2))
     print(f"{args.mpn}: plan written to {plan_path} ({len(plan['tasks'])} tasks)")
-    print(f"  next: run dispatcher per skills/datasheets/references/dispatch-claude-code.md")
+    print(f"  next: run dispatcher per skills/datasheets/references/dispatch-dsh.md")
     return 0
 
 

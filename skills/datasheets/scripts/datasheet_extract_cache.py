@@ -4,7 +4,7 @@ Cache manager for structured datasheet extractions.
 Stores pre-extracted datasheet specs (pin tables, voltage ratings, operating
 conditions, application circuits) as per-MPN JSON files in a project-local
 `datasheets/extracted/` directory. The extraction itself is performed by
-Claude reading selected PDF pages; this module provides the caching framework.
+the agent reading selected PDF pages; this module provides the caching framework.
 
 Directory structure:
     <project>/

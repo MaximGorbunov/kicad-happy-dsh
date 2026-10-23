@@ -1,6 +1,6 @@
 # Datasheet Extraction Dispatcher Contract
 
-> **Status:** Phase 3a (v1.4). The contract is stable and applies to every dispatcher implementation: `dispatch-claude-code.md` (v1.4), `dispatch-codex.md`, `dispatch-gemini.md`, `extract.py` SDK runner, canned harness dispatcher (all v1.5+).
+> **Status:** Phase 3a (v1.4). The contract is stable and applies to every dispatcher implementation: `dispatch-dsh.md` (DeepSeek Harness, v1.4+), `extract.py` SDK runner, canned harness dispatcher (v1.5+).
 
 A **dispatcher** is the swappable layer between `plan_extraction.py` and `merge_results.py` in the Phase 3a extraction pipeline. Its job: read `<mpn>.plan.json`, run each per-task subagent under its native LLM-dispatch primitive, write per-task wrapped result files. Python (plan_extraction + merge_results) is stdlib-only and platform-agnostic; the dispatcher is the only agent-specific component.
 
@@ -25,7 +25,7 @@ Per task: `<cache_dir>/<mpn>.<task_id>.result.json` — the **wrapped result fil
   "status": "complete",
   "extracted_at": "2026-04-25T11:00:00Z",
   "model_tier": "B",
-  "model_id": "claude-sonnet-4-6",
+  "model_id": "<model id>",
   "data": { ... }
 }
 ```
@@ -82,12 +82,12 @@ The dispatcher does NOT inspect the data semantically beyond schema validation. 
 If the dispatcher writes a cost ledger, the format is JSONL:
 
 ```
-{"run_id": "20260425T100000Z-a1b2c3", "mpn": "LM2596-ADJ", "task_id": "scout", "tier": "B", "model_id": "claude-sonnet-4-6", "tokens_in": 12000, "tokens_out": 800, "cost_usd": 0.0123, "success": true, "extracted_at": "2026-04-25T10:00:30Z"}
+{"run_id": "20260425T100000Z-a1b2c3", "mpn": "LM2596-ADJ", "task_id": "scout", "tier": "B", "model_id": "<model id>", "tokens_in": 12000, "tokens_out": 800, "cost_usd": 0.0123, "success": true, "extracted_at": "2026-04-25T10:00:30Z"}
 ```
 
 Location: `<cache_dir>/_cost_ledger.jsonl`. Append-only; never rewritten.
 
-The Phase 3a Claude Code recipe makes this optional (the cost data isn't auditable from inside the `Agent` tool); v1.5 SDK dispatchers populate it directly from API responses.
+The Phase 3a DSH recipe makes this optional (the cost data isn't auditable from inside the `subagent` tool); v1.5 SDK dispatchers populate it directly from API responses.
 
 ## Relationship to plan_extraction.py and merge_results.py
 

@@ -17,8 +17,8 @@ Full extraction-pipeline procedure. The SKILL.md main flow points here; scripts 
 **v1.3 legacy pipeline (read-only in v1.4):**
 1. User runs an analyzer or requests extraction.
 2. Skill checks the cache (`<project>/datasheets/extracted/<MPN>.json`).
-3. On cache miss / stale / low score: Claude reads selected PDF pages and extracts structured data.
+3. On cache miss / stale / low score: the agent reads selected PDF pages and extracts structured data.
 4. Extraction is scored; if score ≥ 6.0, cached.
 5. Consumers query via `datasheet_features.py`.
 
-For dispatcher dispatch recipes and subagent recipes, see `references/dispatch-claude-code.md` and `references/dispatcher-contract.md`.
+For dispatcher dispatch recipes and subagent recipes, see `references/dispatch-dsh.md` and `references/dispatcher-contract.md`.

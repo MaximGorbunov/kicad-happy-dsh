@@ -2,7 +2,7 @@
 Heuristic page selection for datasheet PDF extraction.
 
 Given a downloaded datasheet PDF, identifies which pages contain the
-information Claude needs for structured extraction: pin tables, absolute
+information the agent needs for structured extraction: pin tables, absolute
 maximum ratings, recommended operating conditions, electrical characteristics,
 and application circuits. This reduces token cost by 60-85% compared to
 feeding the entire PDF.

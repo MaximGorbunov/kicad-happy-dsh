@@ -7,7 +7,7 @@ info, and SPICE-relevant specs. Returns a weighted score 0.0-10.0 with
 per-dimension breakdown and a list of specific issues found.
 
 The scoring is deterministic — same input always produces same score. It
-runs after Claude performs the extraction and tells Claude (and the cache
+runs after the agent performs the extraction and tells the agent (and the cache
 manager) whether the extraction is good enough or needs a retry.
 """
 

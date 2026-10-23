@@ -290,7 +290,7 @@ Mapping of which extraction JSON fields drive which verification checks.
 
 ## Limitations
 
-**Extraction quality is LLM-dependent.** The extraction step relies on Claude reading PDF pages and filling in structured JSON. Complex datasheets, poor PDF formatting, or unusual pin table layouts can lead to incomplete or incorrect extractions. The quality scorer (`datasheet_score.py`) catches some gaps, but subtle errors (e.g., wrong voltage assigned to a pin) are not detectable.
+**Extraction quality is LLM-dependent.** The extraction step relies on the agent reading PDF pages and filling in structured JSON. Complex datasheets, poor PDF formatting, or unusual pin table layouts can lead to incomplete or incorrect extractions. The quality scorer (`datasheet_score.py`) catches some gaps, but subtle errors (e.g., wrong voltage assigned to a pin) are not detectable.
 
 **Net voltage estimation is heuristic.** Voltages are resolved from `rail_voltages` (which the schematic analyzer populates for detected power rails) and from net name parsing. Nets with non-standard names or dynamically regulated voltages may not have a voltage estimate, causing those pins to be skipped.
 
