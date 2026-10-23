@@ -25,12 +25,37 @@ around them.
 
 ## Standard full review
 
-1. **Load `kicad`.** Run the analyzers (paths relative to the repo root):
+**Preferred: one command.** `run_review.py` auto-discovers the project files,
+runs schematic → PCB → cross → EMC → thermal in dependency order, and prints a
+compact severity-ranked digest (a few KB) instead of ~380 KB of raw JSON. It
+also names any analyzer it skipped as an explicit review gap.
+
+```bash
+python3 skills/kicad/scripts/run_review.py <project-dir-or-file>
+```
+
+- Full JSON is written to `<project>/.kicad-happy/review/`; the digest tells you
+  the paths and sizes. Dip into a specific section with
+  `python3 -c "import json;d=json.load(open('<file>'));print(json.dumps(d['<key>'],indent=2))"` —
+  never load a whole analyzer JSON into context when you need one key.
+- Exit codes: `0` review ran (findings may exist), `2` bad input / schematic
+  failed to parse, `3` an analyzer crashed (reported as a gap). On a non-zero
+  exit, read stderr, fix the input, and rerun once — never fabricate results.
+- Flags: `--no-pcb` (schematic-only), `--standard cispr-class-b` (EMC target),
+  `--top N`, `--schematic`/`--pcb` to override discovery, `--json` for a
+  machine-readable digest.
+
+**Manual sequence** (only when you need per-analyzer control, or SPICE/BOM/fab
+steps below). Paths relative to the repo root:
+
+1. **Load `kicad`.** Run the analyzers:
    ```bash
    python3 skills/kicad/scripts/analyze_schematic.py <f>.kicad_sch --output <out>/sch.json
-   python3 skills/kicad/scripts/analyze_pcb.py <f>.kicad_pcb --full --output <out>/pcb.json
+   python3 skills/kicad/scripts/analyze_pcb.py <f>.kicad_pcb --full --output <out>/pcb.json --schematic <out>/sch.json
    ```
-   Artifacts go under the project (e.g. `.kicad-happy/analysis/`).
+   For a compact per-analyzer digest, add `--text` (grouped findings with
+   Detail/Fix/Stages) instead of reading the full JSON. Artifacts go under the
+   project (e.g. `.kicad-happy/analysis/`).
 2. **Datasheet cross-check:** for ICs with findings, consult the
    `datasheets` skill cache (`<project>/datasheets/extracted/<MPN>.json`).
    On a miss, run its extraction pipeline (see `datasheets` skill) — dispatch
@@ -71,3 +96,19 @@ around them.
   use the DSH-bundled Python from `load_workspace_dependencies`.
 - Every reported finding carries the analyzer's confidence label and
   evidence source — don't invent findings the JSON doesn't support.
+
+## When a script fails
+
+Small models often improvise after an error — don't. Follow this instead:
+
+1. **Read stderr.** Analyzer errors name the input and the fix (bad path,
+   parse failure, wrong file type, missing `--schematic`). Trust it.
+2. **Fix the input or the arguments, then rerun once.** Most failures are a
+   wrong path, a truncated/malformed file, or a missing flag.
+3. **Still failing? Record a review gap** — state in the report which analyzer
+   could not run and why, and lower confidence accordingly. Never fabricate
+   findings, never claim an analyzer passed when it errored, and never present
+   an empty result as "the design is clean" (empty usually means the file
+   failed to parse — check the exit code first).
+4. **Exit codes:** `0` = ran (findings may still exist), `2` = bad input /
+   parse failure, `3` = analyzer crashed. Treat any non-zero as "not analyzed."
