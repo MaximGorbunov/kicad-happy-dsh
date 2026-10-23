@@ -488,6 +488,7 @@ def build_kicad_sch(spec, outdir, proj):
 
     # net graph from pin tips
     nets = {}
+    net_pin_dir = {}   # (netname, (px,py)) -> outward unit direction
     def net(n):
         return nets.setdefault(n, [])
     for c in comps:
@@ -496,12 +497,32 @@ def build_kicad_sch(spec, outdir, proj):
             if nname is None:
                 continue
             dx, dy = tip[pin]
-            net(nname).append((c["x"] + dx, c["y"] + dy))
+            px, py = c["x"] + dx, c["y"] + dy
+            net(nname).append((px, py))
+            # Outward direction = continue away from the symbol body along the
+            # pin's own offset axis. Used to draw a short visible stub.
+            if abs(dx) >= abs(dy):
+                net_pin_dir[(nname, (px, py))] = (1.0 if dx >= 0 else -1.0, 0.0)
+            else:
+                net_pin_dir[(nname, (px, py))] = (0.0, 1.0 if dy >= 0 else -1.0)
 
-    # Wire routing was removed in favor of label-based connectivity (see the
-    # label emission below): the old router drew collinear segments that shorted
-    # nets sharing a bus row. Labels join same-named pins with no short risk.
+    # Decorative wiring: a short stub on every named pin, with the net label at
+    # the stub's far end. Connectivity is carried by the LABELS (guaranteed
+    # correct); the stubs make the schematic visually readable — every pin shows
+    # a wire and its net name, the standard net-label schematic style. Stubs are
+    # short (2.54mm) and point outward from each pin, so they don't collide the
+    # way the old bus router did (which shorted nets sharing a median-y row).
+    STUB = 2.54
     all_segs, all_junc = [], []
+    stub_endpoints = {}   # netname -> list of (x,y) where the label goes
+    for nname, pts in nets.items():
+        ends = []
+        for (px, py) in pts:
+            ux, uy = net_pin_dir.get((nname, (px, py)), (0.0, 0.0))
+            ex, ey = px + ux * STUB, py + uy * STUB
+            all_segs.append(((px, py), (ex, ey)))
+            ends.append((ex, ey))
+        stub_endpoints[nname] = ends
 
     # Detect undriven power nets so we can attach a PWR_FLAG to each. KiCad ERC
     # reports "Input Power pin not driven by any Output Power pins" for any net
@@ -599,7 +620,7 @@ def build_kicad_sch(spec, outdir, proj):
                       for i, nn in enumerate(undriven_power_nets)]
 
     for nname, npts in sorted(nets.items()):
-        for (lx, ly) in npts:
+        for (lx, ly) in stub_endpoints.get(nname, npts):
             L.append('\t(label "%s"' % nname)
             L.append("\t\t(at %s %s 0)" % (fmt(lx), fmt(ly)))
             L.append("\t\t(effects")
@@ -611,6 +632,19 @@ def build_kicad_sch(spec, outdir, proj):
             # is rejected by the parser at this position.
             L.append('\t\t(uuid "%s")' % uid())
             L.append("\t)")
+    # Emit the decorative wire stubs (before symbols; after labels per KiCad's
+    # order-sensitive parser). Each stub runs from a pin outward to its label.
+    for (a, b) in all_segs:
+        L.append("\t(wire")
+        L.append("\t\t(pts")
+        L.append("\t\t\t(xy %s %s) (xy %s %s)" % (fmt(a[0]), fmt(a[1]), fmt(b[0]), fmt(b[1])))
+        L.append("\t\t)")
+        L.append("\t\t(stroke")
+        L.append("\t\t\t(width 0)")
+        L.append("\t\t\t(type default)")
+        L.append("\t\t)")
+        L.append('\t\t(uuid "%s")' % uid())
+        L.append("\t)")
     # A label on each PWR_FLAG's pin (the flag symbol itself is emitted with the
     # other placed symbols below — labels must all come first).
     for (fx, fy, nname) in pwr_flag_spots:
@@ -727,7 +761,7 @@ def build_kicad_sch(spec, outdir, proj):
     # Report pin-label count in the "wires" slot so the summary stays honest
     # (connectivity is by label now, not routed wires).
     n_labels = sum(len(pts) for pts in nets.values())
-    return path, n_labels, 0, len(nets)
+    return path, len(all_segs), n_labels, len(nets)
 
 # ---------------------------------------------------------------------------
 # PCB  (.kicad_pcb)
@@ -1113,7 +1147,7 @@ def main():
     _, sw, sj, sn = sch
     _, pf, pt, pn = pcb
     print("wrote %s project:" % proj)
-    print("  schematic: %s symbols, %s pin labels, %s nets" % (len(spec["comps"]), sw, sn))
+    print("  schematic: %s symbols, %s wire stubs, %s nets" % (len(spec["comps"]), sw, sn))
     print("  pcb: %s footprints, %s traces, %s nets" % (pf, pt, pn))
 
     # ---- validation gate -------------------------------------------------
