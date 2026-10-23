@@ -30,10 +30,9 @@ jobs:
           echo "All scripts compile successfully"
 
   skill-metadata:
-    # Validates SKILL.md frontmatter against platform constraints.
-    # Catches description-length regressions at PR time so we don't ship
-    # a release where a skill is rejected on load by Codex (1024-char cap).
-    # See KH-327 (post-rc.1 incident) for the motivating case.
+    # Validates SKILL.md frontmatter against the DeepSeek Harness contract
+    # (name grammar, required fields, no legacy invocation keys). Catches
+    # skills that DSH would silently ignore at load time.
     runs-on: ubuntu-latest
 
     steps:
@@ -44,7 +43,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check SKILL.md description lengths
+      - name: Check SKILL.md DSH frontmatter conformance
         run: python3 .github/scripts/check_skill_metadata.py
 
   smoke-validation:

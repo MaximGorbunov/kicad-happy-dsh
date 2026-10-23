@@ -5,24 +5,28 @@ Thanks for your interest in contributing. This guide covers the project structur
 ## Project structure
 
 ```
-skills/
-├── kicad/           # Core analysis skill (schematic, PCB, Gerber, thermal, diff, what-if)
-│   ├── SKILL.md     # Skill definition with triggers and usage docs
-│   ├── scripts/     # Python analysis scripts (zero-dep, Python 3.10+)
-│   └── references/  # Deep methodology guides (18 files)
-├── datasheets/      # Structured extraction pipeline — per-MPN cache, quality scoring, consumer API
-├── emc/             # EMC pre-compliance (44 rules, 18 categories)
-├── spice/           # SPICE simulation (ngspice/LTspice/Xyce)
-├── bom/             # BOM management
-├── digikey/         # DigiKey API integration
-├── mouser/          # Mouser API integration
-├── lcsc/            # LCSC/JLCPCB parts (no auth)
-├── element14/       # element14/Newark/Farnell API
-├── jlcpcb/          # JLCPCB fab rules and BOM/CPL format
-└── pcbway/          # PCBWay fab rules
+skills/            # Canonical skill tree (single source of truth)
+├── hub/           # kicad-happy hub skill — orchestrates the others (DSH workflows)
+├── kicad/         # Core analysis skill (schematic, PCB, Gerber, thermal, diff, what-if)
+│   ├── SKILL.md   # Skill definition with triggers and usage docs
+│   ├── scripts/   # Python analysis scripts (zero-dep, Python 3.10+)
+│   └── references/  # Deep methodology guides
+├── datasheets/    # Structured extraction pipeline — per-MPN cache, quality scoring, consumer API
+├── emc/           # EMC pre-compliance (44 rules, 18 categories)
+├── spice/         # SPICE simulation (ngspice/LTspice/Xyce)
+├── bom/           # BOM management
+├── digikey/       # DigiKey API integration
+├── mouser/        # Mouser API integration
+├── lcsc/          # LCSC/JLCPCB parts (no auth)
+├── element14/     # element14/Newark/Farnell API
+├── jlcpcb/        # JLCPCB fab rules and BOM/CPL format
+└── pcbway/        # PCBWay fab rules
+
+.dsh/skills -> ../skills   # DSH's highest-priority project skill root (symlink)
+AGENTS.md       # Auto-loaded by DSH into every session in this workspace
 ```
 
-Each skill has a `SKILL.md` with YAML frontmatter (name, description, triggers) and reference documentation. The analysis engine is entirely in Python — the SKILL.md files are instructions for AI agents that use the scripts.
+Each skill has a `SKILL.md` with YAML frontmatter (name, description, triggers) and reference documentation. The analysis engine is entirely in Python — the SKILL.md files are instructions for the DSH agent that runs the scripts.
 
 ### Key files
 
@@ -135,43 +139,62 @@ All formulas should reference a primary source (textbook, app note, standard) in
 
 ## How to add a new skill
 
-1. Create `skills/<name>/SKILL.md` with YAML frontmatter:
+1. Create `skills/<name>/SKILL.md` with YAML frontmatter following the DSH
+   contract:
 
 ```yaml
 ---
-name: my-skill
-description: One paragraph describing what this skill does and when to use it. Include trigger phrases.
+name: my-skill            # required, kebab-case: ^[a-z0-9]+(-[a-z0-9]+)*$
+description: One paragraph describing what this skill does and when to use it. Include trigger phrases.   # required, non-empty
+whenToUse: Optional extra trigger guidance.   # optional
 ---
 ```
 
-2. Add any scripts to `skills/<name>/scripts/`
-3. Add a symlink in `.agents/skills/`: `ln -s ../../skills/<name> .agents/skills/<name>`
-    *   **Antigravity CLI / Gemini:** Run `agy plugin install .` to install/update the local plugin.
-    *   **opencode:** No per-skill registration needed — `.opencode/opencode.json` points the loader at the whole `skills/` tree, so new skills under `skills/<name>/SKILL.md` are auto-discovered.
-4. Update the manual install lists in `README.md` (Claude Code, Codex, Antigravity/Gemini, and opencode sections)
+   DSH also accepts `disable-model-invocation: true` (hide from the model),
+   `user-invocable: false` (hide from human invocation), and a free-form
+   `metadata` object. Legacy keys (`modelInvocable`, `userInvocable`,
+   `disableModelInvocation`) are rejected — do not use them.
+
+2. Add any scripts to `skills/<name>/scripts/`. The skill directory is the
+   DSH **resource base** — reference scripts and references with relative
+   paths (`scripts/…`, `references/…`).
+3. No registration step is needed: the shipped `.dsh/skills → skills` link
+   exposes the whole tree to DSH (rank-100 project root), and DSH's watcher
+   picks up new skills live.
+4. Add the skill to the skill tables in `AGENTS.md` and `README.md`, and to
+   the global-install loop in both if it should ship globally.
 5. Validate:
-    *   **Claude Code:** `claude plugin validate .`
-    *   **Antigravity CLI:** Run `agy plugin validate .` to verify plugin structure and skills.
-    *   **opencode:** Run `/skills list` in an active session to verify the new skill appears.
-    *   **All skills:** `python3 .github/scripts/check_skill_metadata.py` (description ≤ 1024 chars; CI runs this on every PR).
+    *   `python3 .github/scripts/check_skill_metadata.py` — DSH frontmatter
+        conformance gate (name grammar, required fields, no legacy keys);
+        CI runs this on every PR.
+    *   Start a DSH session in the workspace and confirm the skill appears in
+        the skill catalog; load it with the `skill` tool and confirm relative
+        paths resolve.
 
-Keep SKILL.md language agent-neutral — use "the agent" instead of "Claude", "use web search" instead of "WebSearch", etc.
+Keep SKILL.md language DSH-aware — name the actual tools (`subagent`,
+`workflow`, `present`, `ask_user_question`, `schedule_create`) where a
+workflow needs them, and keep everything else agent-neutral.
 
-### SKILL.md description length cap
+### Frontmatter conformance (DSH)
 
-Every skill's frontmatter `description:` must stay under **1024 characters** — the strictest cap shipped by any supported platform (Codex). Skills over this are rejected on load by Codex and silently truncated elsewhere. CI gates on this via `.github/scripts/check_skill_metadata.py`. To run it locally before committing:
+DSH's parser rejects invalid frontmatter, so the gate checks exactly what DSH
+requires: `name` matches the kebab-case grammar, `description` is non-empty,
+no legacy invocation keys, and only known keys are used. DSH imposes no hard
+length cap on `description`, but keep it under **1024 characters** as a
+practical limit (it renders verbatim in every session's skill catalog).
+Run it locally before committing:
 
 ```bash
 python3 .github/scripts/check_skill_metadata.py
 ```
 
-Reports current length + buffer for every skill, warns when buffer drops below 50 chars, fails when any skill is over the cap. To enable as a git pre-commit hook so it runs automatically on `git commit`:
+Reports each skill's status + description length, warns when the length
+exceeds 900 chars, fails on any contract violation. To enable as a git
+pre-commit hook so it runs automatically on `git commit`:
 
 ```bash
 ln -sf ../../.github/scripts/check_skill_metadata.py .git/hooks/pre-commit
 ```
-
-The `bom` and `kicad` skills' descriptions are currently the closest to the cap (their trigger-phrase lists are the longest); be conservative when adding phrases there.
 
 ## Running the analysis scripts
 

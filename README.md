@@ -1,13 +1,13 @@
 # ⚡ kicad-happy
 
-[![CI](https://github.com/aklofas/kicad-happy/actions/workflows/ci.yml/badge.svg)](https://github.com/aklofas/kicad-happy/actions/workflows/ci.yml)
+[![CI](https://github.com/MaximGorbunov/kicad-happy-dsh/actions/workflows/ci.yml/badge.svg)](https://github.com/MaximGorbunov/kicad-happy-dsh/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Mentioned in Awesome KiCad](https://awesome.re/mentioned-badge.svg)](https://github.com/joanbono/awesome-kicad)
 
 AI-powered design review for KiCad. Analyzes schematics, PCB layouts, and Gerbers. Catches real bugs before you order boards.
 
-Works with **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)**, **[OpenAI Codex](https://github.com/openai/codex)**, **[GitHub Copilot CLI](https://docs.github.com/en/copilot)**, **[Google Antigravity](https://antigravity.google)**, and **[opencode](https://github.com/sst/opencode)**, as a **GitHub Action** for automated PR reviews, or as standalone Python scripts you can run anywhere.
+Built for **[DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness)** — native skills for the desktop, web, TUI, and headless profiles — plus a **GitHub Action** for automated PR reviews, or standalone Python scripts you can run anywhere.
 
 These skills turn your AI coding agent into a full-fledged electronics design assistant that understands your KiCad projects at a deep level: parses schematics and PCB layouts into structured data, cross-references component values against datasheets, detects common design errors, and walks you through the full prototype-to-production workflow.
 
@@ -91,137 +91,84 @@ For the end-to-end walkthrough from S-expression parsing through signal detectio
 ## 🚀 Install
 
 > [!TIP]
-> For detailed installation, upgrade, and troubleshooting guidance across all platforms, have your AI agent read [`install-guidance.md`](install-guidance.md). It covers platform-specific quirks, known bugs, workarounds, and OS-specific issues.
+> For detailed installation, upgrade, and troubleshooting guidance in DeepSeek
+> Harness, have your AI agent read [`install-guidance.md`](install-guidance.md).
+> It covers skill-discovery troubleshooting, Python version issues, and
+> sandbox/approval behavior.
 
-**Claude Code:**
+kicad-happy is a **DSH-native skill suite**. DSH discovers skills from a
+project's `.dsh/skills/` directory (its highest-priority project root), which
+this repo ships as a link to `skills/` — so cloning the repo is the install.
 
-```
-/plugin marketplace add aklofas/kicad-happy
-/plugin install kicad-happy@kicad-happy
-```
-
-> [!NOTE]
-> `/plugin update` may not detect new versions due to a [known Claude Code issue](https://github.com/anthropics/claude-code/issues/36317).
-> To get the latest version, clear the cache and reinstall:
-> ```
-> rm -rf ~/.claude/plugins/cache/kicad-happy ~/.claude/plugins/marketplaces/kicad-happy
-> /plugin marketplace add aklofas/kicad-happy
-> /plugin install kicad-happy@kicad-happy
-> ```
-
-**OpenAI Codex:**
-
-Use Codex's built-in skill installer first:
-
-> "Use $skill-installer to install the kicad-happy skills from https://github.com/aklofas/kicad-happy"
-
-If you prefer a manual install, install the skills into `~/.codex/skills/`.
-
-**Google Antigravity CLI (`agy`) / Gemini:**
-
-Install directly from GitHub as an Antigravity plugin:
+**Mode A — workspace install (recommended):**
 
 ```bash
-agy plugin install https://github.com/aklofas/kicad-happy.git
+git clone git@github.com:MaximGorbunov/kicad-happy-dsh.git
+cd kicad-happy-dsh
 ```
 
-Or from a local checkout:
+Then open that directory as a workspace in DeepSeek Harness (desktop, web,
+TUI, or headless) and start a session. All 12 skills — the `kicad-happy` hub
+plus 11 domain skills — appear in the session's skill catalog automatically.
+Try: *"Analyze my KiCad project at `hardware/rev2/`"*.
+
+**Mode B — global install (every workspace):**
 
 ```bash
-git clone https://github.com/aklofas/kicad-happy.git
-agy plugin install kicad-happy
-```
-
-Toggle when needed:
-
-```bash
-agy plugin disable kicad-happy   # Disable when not doing electronics review
-agy plugin enable kicad-happy    # Enable when working on KiCad projects
-```
-
-See [install-guidance.md](install-guidance.md#google-antigravity-cli-agy--gemini) for workspace-scope installs, slash commands, and upgrade notes.
-
-
-**opencode:**
-
-```bash
-git clone https://github.com/aklofas/kicad-happy.git
-cd kicad-happy
-opencode
-```
-
-The repo ships `.opencode/opencode.json`, which opencode auto-discovers and uses to load all 11 skills from `./skills/`. For global availability across all projects, see [install-guidance.md](install-guidance.md#opencode).
-
-<details>
-<summary><strong>Manual install & other platforms</strong></summary>
-
-**Claude Code (macOS / Linux):**
-
-```bash
-git clone https://github.com/aklofas/kicad-happy.git
-cd kicad-happy
-mkdir -p ~/.claude/skills
+REPO=<path-to-this-repo>
+mkdir -p ~/.dsh/skills
 for skill in kicad spice emc datasheets bom digikey mouser lcsc element14 jlcpcb pcbway; do
-  ln -sf "$(pwd)/skills/$skill" ~/.claude/skills/$skill
+  ln -sf "$REPO/skills/$skill" ~/.dsh/skills/$skill
 done
+ln -sf "$REPO/skills/hub" ~/.dsh/skills/kicad-happy
 ```
 
-**OpenAI Codex — global install (macOS / Linux):**
+`~/.dsh/skills/` is DSH's user-global skill root; the skills then load in
+every workspace, not just this repo's. (Symlink the *contents* of each skill
+directory — DSH reads each skill's `SKILL.md` frontmatter for its name, so
+link target names don't matter, but keep them tidy.)
 
-```bash
-git clone https://github.com/aklofas/kicad-happy.git
-cd kicad-happy
-mkdir -p ~/.codex/skills
-for skill in kicad spice emc datasheets bom digikey mouser lcsc element14 jlcpcb pcbway; do
-  ln -sf "$(pwd)/skills/$skill" ~/.codex/skills/$skill
-done
+**Mode C — pinned profile config (advanced):**
+
+Prefer an explicit, machine-pinned path instead of symlinks? Add a
+`skill-filesystem` config override to your DSH profile patch
+(`~/.dsh/profiles/desktop/cordis.patch.yml` for the desktop profile):
+
+```yaml
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    customSkillDirs:
+      - /absolute/path/to/kicad-happy-dsh/skills
 ```
 
-**Windows PowerShell (Codex):**
+Custom skill dirs rank between project roots and user roots, so they coexist
+with Modes A/B without name collisions (project-level skills win on a clash).
 
-```powershell
-git clone https://github.com/aklofas/kicad-happy.git
-cd kicad-happy
-New-Item -ItemType Directory -Force "$HOME\.codex\skills" | Out-Null
-"kicad","spice","emc","datasheets","bom","digikey","mouser","lcsc","element14","jlcpcb","pcbway" | ForEach-Object {
-  New-Item -ItemType SymbolicLink -Path "$HOME\.codex\skills\$_" -Target "$(Get-Location)\skills\$_" -Force | Out-Null
-}
-```
-
-Note: Windows symlinks may require Developer Mode or elevated privileges.
-
-</details>
-
-The analysis scripts are **pure Python 3.10+** with zero required dependencies. No pip install, no Docker, no KiCad installation needed.
+The analysis scripts are **pure Python 3.10+** with zero required
+dependencies. No pip install, no Docker, no KiCad installation needed. DSH
+bundles Python 3.12, so no separate Python setup is required even on macOS
+(where the system `python3` is 3.9 — below this suite's minimum).
 
 ### Release candidates
 
-The stable install commands above always resolve to the latest stable release on `main` (currently v2.1.0). When a release candidate is active, opt in by appending `#<tag>` to the marketplace ref:
-
-**Claude Code:**
-
-```
-/plugin marketplace add aklofas/kicad-happy#vX.Y.Z-rc.N
-/plugin install kicad-happy@kicad-happy
-```
-
-This pins to the RC tag. Stable users on the un-suffixed marketplace are unaffected. To switch back to stable, remove the marketplace and re-add it without the `#` suffix.
-
-**Codex / Gemini CLI / opencode:** clone the repo and check out the RC tag before running the install above:
+Clone the repo and check out the RC tag, then use Mode A or B as above:
 
 ```bash
-git clone https://github.com/aklofas/kicad-happy.git
-cd kicad-happy
+git clone git@github.com:MaximGorbunov/kicad-happy-dsh.git
+cd kicad-happy-dsh
 git checkout vX.Y.Z-rc.N
-# then run the symlink install for your agent
 ```
 
 > [!IMPORTANT]
-> Release candidates are pre-release builds intended for evaluation and feedback. They have passed the corpus regression gate and contract test suite but haven't completed extended manual validation. File issues on GitHub if you hit problems.
+> Release candidates are pre-release builds intended for evaluation and
+> feedback. They have passed the corpus regression gate and contract test
+> suite but haven't completed extended manual validation. File issues on
+> GitHub if you hit problems.
 
 ## ⚙️ GitHub Action
 
-Also available as a **GitHub Action** for automated PR reviews. Every push and PR that touches KiCad files gets a commit status check and a structured review comment — power tree, SPICE results, EMC risk, thermal analysis, and more. Optionally chain with Claude for AI-powered natural-language reviews.
+Also available as a **GitHub Action** for automated PR reviews. Every push and PR that touches KiCad files gets a commit status check and a structured review comment — power tree, SPICE results, EMC risk, thermal analysis, and more. For AI-driven reviews inside DeepSeek Harness (e.g. on a self-hosted runner), see the `dsh headless` example in [github-action.md](github-action.md).
 
 See the **[GitHub Action setup guide](github-action.md)** for workflow examples, diff-based PR reviews, and AI-powered review configuration.
 
@@ -493,4 +440,4 @@ MIT — see [CHANGELOG.md](CHANGELOG.md) for release history and [CONTRIBUTING.m
 
 ---
 
-*Built with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [OpenAI Codex](https://github.com/openai/codex).* 🤖
+*Built for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).* 🤖
